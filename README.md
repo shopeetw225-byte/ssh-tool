@@ -7,13 +7,23 @@
 - `packages/ssh-tool-win/remote-support.ps1`：Windows（OpenSSH Server + `bore.exe`）
 - `packages/ssh-tool-mac/remote-support.sh`：macOS（Remote Login/sshd + `bore`）
 
+## 下载与安装（给用户）
+
+请从 GitHub Releases 下载对应平台的安装包（不要直接下载仓库源码压缩包）：
+
+- Windows x64（推荐）：`ssh-tool-win.exe`
+- Windows ARM64：`ssh-tool-win-arm64.exe`
+- Windows 脚本版：`ssh-tool-win.zip`
+- macOS（推荐）：`ssh-tool-mac.dmg`（内含 `SSH Tool.app`）
+- macOS 脚本版：`ssh-tool-mac.zip`
+
 ## 顾客侧使用（Windows）
 
 两种分发方式：
 
 ### A) ZIP（脚本版）
 
-1. 解压 `dist/ssh-tool-win.zip`
+1. 下载并解压 `ssh-tool-win.zip`
 2. 可选：在 `support.pub` 放入你们支持团队的公钥（推荐，免密码）。如果留空，脚本会自动走“临时账号+随机密码”模式。
 3. 右键用 PowerShell 运行：
 
@@ -43,7 +53,7 @@
 
 ### B) 单文件 EXE
 
-1. 下载 `dist/ssh-tool-win.exe`
+1. 下载 `ssh-tool-win.exe`（或 `ssh-tool-win-arm64.exe`）
 2. 可选：把 `support.pub` 放在 exe 同目录（推荐，免密码）。如果留空，会自动走“临时账号+随机密码”模式。
 3. 双击运行（会请求管理员权限），会自动打开本地页面，在页面里点“开始会话”（注意：运行期间请不要关闭弹出的黑色窗口）；也可以在 PowerShell 直接运行：
 
@@ -66,7 +76,7 @@
 
 ### A) DMG（推荐）
 
-1. 打开 `dist/ssh-tool-mac.dmg`
+1. 下载并打开 `ssh-tool-mac.dmg`
 2. 把 `SSH Tool.app` 拖到 `Applications`
 3. 双击 `SSH Tool.app`：
 
@@ -80,7 +90,7 @@
 
 ### B) ZIP（脚本版）
 
-1. 解压 `dist/ssh-tool-mac.zip`
+1. 下载并解压 `ssh-tool-mac.zip`
 2. 可选：在 `support.pub` 放入你们支持团队的公钥（推荐，免密码）。如果留空，脚本会自动走“临时账号+随机密码”模式。
 3. 运行：
 
