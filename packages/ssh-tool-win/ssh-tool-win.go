@@ -787,6 +787,7 @@ func readStateFile(path string) (*sessionState, error) {
 	if err != nil {
 		return nil, err
 	}
+	b = bytes.TrimPrefix(b, []byte{0xEF, 0xBB, 0xBF}) // UTF-8 BOM (PowerShell 5.1 may write it)
 	var st sessionState
 	if err := json.Unmarshal(b, &st); err != nil {
 		return nil, err

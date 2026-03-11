@@ -95,7 +95,10 @@ function Protect-PathAdminOnly([string]$Path) {
 }
 
 function Write-State([hashtable]$State, [string]$Path) {
-  $State | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $Path -Encoding UTF8
+  # PowerShell 5.1's Set-Content -Encoding UTF8 writes a UTF-8 BOM, which breaks some JSON parsers.
+  $json = $State | ConvertTo-Json -Depth 6
+  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText($Path, $json, $utf8NoBom)
   Protect-PathAdminOnly $Path
 }
 
