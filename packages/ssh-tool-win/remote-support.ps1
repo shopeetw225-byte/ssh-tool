@@ -197,6 +197,81 @@ function Ensure-Service-Startable([string]$Name) {
   }
 }
 
+function Expand-Zip([string]$ZipPath, [string]$DestDir) {
+  if (-not (Test-Path -LiteralPath $ZipPath)) { throw "Zip not found: $ZipPath" }
+  Ensure-Dir $DestDir
+  try {
+    Expand-Archive -LiteralPath $ZipPath -DestinationPath $DestDir -Force -ErrorAction Stop
+    return
+  } catch {
+    # Fallback for environments where Expand-Archive is unavailable/broken.
+    try {
+      Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue | Out-Null
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $DestDir, $true)
+      return
+    } catch {
+      throw "Failed to extract zip: $ZipPath"
+    }
+  }
+}
+
+function Install-OpenSSHServerFromZip([string]$ZipPath) {
+  $base = Join-Path $env:ProgramData "ssh-tool\openssh"
+  Ensure-Dir $base
+
+  Write-Info "Installing OpenSSH Server from zip: $ZipPath"
+  Expand-Zip -ZipPath $ZipPath -DestDir $base
+
+  $installScript = Get-ChildItem -LiteralPath $base -Recurse -Force -Filter "install-sshd.ps1" -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $installScript) { throw "install-sshd.ps1 not found after extract: $base" }
+
+  $dir = Split-Path -Parent $installScript.FullName
+  Push-Location $dir
+  try {
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ".\\install-sshd.ps1" | Out-Null
+  } finally {
+    Pop-Location
+  }
+
+  $svc = Get-Service -Name sshd -ErrorAction SilentlyContinue
+  if (-not $svc) { throw "OpenSSH install completed but sshd service is still missing." }
+}
+
+function Install-OpenSSHServerFallback {
+  # Fallback when Add-WindowsCapability is blocked (Windows Update disabled/WSUS policy/offline).
+  # You can provide a local zip to avoid downloads:
+  #   - set env:SSH_TOOL_OPENSSH_ZIP to a file path
+  #   - or place OpenSSH-Win64.zip next to this script/exe payload
+
+  $zip = $null
+  if ($env:SSH_TOOL_OPENSSH_ZIP -and (Test-Path -LiteralPath $env:SSH_TOOL_OPENSSH_ZIP)) {
+    $zip = $env:SSH_TOOL_OPENSSH_ZIP
+  } else {
+    $candidate = Join-Path $PSScriptRoot "OpenSSH-Win64.zip"
+    if (Test-Path -LiteralPath $candidate) { $zip = $candidate }
+  }
+
+  if (-not $zip) {
+    $url = if ($env:SSH_TOOL_OPENSSH_ZIP_URL) { $env:SSH_TOOL_OPENSSH_ZIP_URL } else { "https://github.com/PowerShell/Win32-OpenSSH/releases/latest/download/OpenSSH-Win64.zip" }
+    $dst = Join-Path $env:ProgramData "ssh-tool\openssh\OpenSSH-Win64.zip"
+    Ensure-Dir (Split-Path -Parent $dst)
+    Write-Info "Downloading OpenSSH Server package..."
+    Write-Info "  $url"
+    try {
+      try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch { }
+      Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $dst -ErrorAction Stop | Out-Null
+      $zip = $dst
+    } catch {
+      Write-Err ("Failed to download OpenSSH zip: " + $_.Exception.Message)
+      Write-Warn "Manual fix: install OpenSSH Server from Settings -> Apps -> Optional features."
+      Write-Warn "Or download OpenSSH-Win64.zip (PowerShell/Win32-OpenSSH) and place it next to ssh-tool-win.exe as OpenSSH-Win64.zip, then rerun."
+      throw
+    }
+  }
+
+  Install-OpenSSHServerFromZip -ZipPath $zip
+}
+
 function Install-OpenSSHServerIfMissing {
   $svc = Get-Service -Name sshd -ErrorAction SilentlyContinue
   if ($svc) { return }
@@ -213,11 +288,9 @@ function Install-OpenSSHServerIfMissing {
   } catch {
     $hr = [uint32]($_.Exception.HResult)
     $hrHex = ("0x{0:X8}" -f $hr)
-    Write-Err ("OpenSSH Server install failed: " + $_.Exception.Message + " (HResult: " + $hrHex + ")")
-    Write-Warn "Common causes: Windows Update disabled, no Internet, or WSUS/group policy blocks Optional Features."
-    Write-Warn "Try: enable/start services wuauserv (Windows Update), bits (BITS), TrustedInstaller; then rerun."
-    Write-Warn "Or install manually: Settings -> Apps -> Optional features -> Add a feature -> OpenSSH Server."
-    throw
+    Write-Warn ("Add-WindowsCapability failed: " + $_.Exception.Message + " (HResult: " + $hrHex + ")")
+    Write-Warn "Trying fallback installer (Win32-OpenSSH zip)..."
+    Install-OpenSSHServerFallback
   }
 
   $svc2 = Get-Service -Name sshd -ErrorAction SilentlyContinue
