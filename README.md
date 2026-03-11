@@ -27,6 +27,7 @@
 常见提示：
 
 - 如果被 SmartScreen 拦截：点「更多信息」→「仍要运行」。
+- 如果提示安装 OpenSSH Server 失败：通常是 Windows Update / BITS 被禁用或无法访问更新源（企业策略/离线环境）。请先让 IT 开启 Windows Update 或在「设置 → 应用 → 可选功能」里手动安装 `OpenSSH Server`。
 
 ### macOS 快速开始（推荐：DMG）
 

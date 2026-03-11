@@ -21,6 +21,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Force UTF-8 output so logs are readable in the UI (avoid mojibake on non-English Windows).
+try {
+  [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+  $OutputEncoding = [Console]::OutputEncoding
+} catch { }
+
 function Test-IsAdmin {
   $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
   $principal = New-Object Security.Principal.WindowsPrincipal($currentIdentity)
@@ -171,11 +177,51 @@ function Backup-File([string]$Src, [string]$Dst) {
   return $false
 }
 
+function Ensure-Service-Startable([string]$Name) {
+  $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue
+  if (-not $svc) { return }
+
+  $mode = Get-ServiceStartMode $Name
+  if ($mode -and $mode.ToLowerInvariant() -eq "disabled") {
+    Write-Warn "$Name service is disabled; enabling temporarily (Manual)..."
+    try { Set-ServiceStartMode $Name "Manual" } catch { }
+  }
+
+  try {
+    $svc2 = Get-Service -Name $Name -ErrorAction SilentlyContinue
+    if ($svc2 -and $svc2.Status -ne "Running") {
+      Start-Service -Name $Name -ErrorAction Stop
+    }
+  } catch {
+    Write-Warn ("Failed to start service " + $Name + ": " + $_.Exception.Message)
+  }
+}
+
 function Install-OpenSSHServerIfMissing {
   $svc = Get-Service -Name sshd -ErrorAction SilentlyContinue
   if ($svc) { return }
   Write-Info "OpenSSH Server not found; installing..."
-  Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 | Out-Null
+
+  # Add-WindowsCapability downloads optional features via Windows Update. On many managed PCs,
+  # Windows Update/BITS may be disabled; try to start the required services first.
+  Ensure-Service-Startable "wuauserv"
+  Ensure-Service-Startable "bits"
+  Ensure-Service-Startable "TrustedInstaller"
+
+  try {
+    Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 -ErrorAction Stop | Out-Null
+  } catch {
+    $hr = [uint32]($_.Exception.HResult)
+    $hrHex = ("0x{0:X8}" -f $hr)
+    Write-Err ("OpenSSH Server install failed: " + $_.Exception.Message + " (HResult: " + $hrHex + ")")
+    Write-Warn "Common causes: Windows Update disabled, no Internet, or WSUS/group policy blocks Optional Features."
+    Write-Warn "Try: enable/start services wuauserv (Windows Update), bits (BITS), TrustedInstaller; then rerun."
+    Write-Warn "Or install manually: Settings -> Apps -> Optional features -> Add a feature -> OpenSSH Server."
+    throw
+  }
+
+  $svc2 = Get-Service -Name sshd -ErrorAction SilentlyContinue
+  if (-not $svc2) { throw "OpenSSH Server install finished but sshd service is still missing." }
 }
 
 function Get-ServiceStartMode([string]$Name) {
