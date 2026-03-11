@@ -1,0 +1,15 @@
+.DS_Store
+
+# Build / release artifacts
+dist/
+*.msi
+*.dmg
+
+# Generated WiX source (has absolute paths)
+build/ssh-tool-win-final.wxs
+
+# Dependencies
+**/node_modules/
+
+# Local temp/session files
+*.log

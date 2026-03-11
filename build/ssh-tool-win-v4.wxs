@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX v4 source for SSH Tool Windows MSI installer.
+  Build with: wix build build/ssh-tool-win-v4.wxs -arch x64 -out dist/ssh-tool-win.msi
+  Requires: dotnet tool install --global wix
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package Name="SSH Tool"
+           Language="1033"
+           Version="0.1.0"
+           Manufacturer="SSH Tool"
+           UpgradeCode="5E8C3D1A-9F4B-4A7E-B2C8-1D6E3F0A9B4C">
+
+    <!-- Allow same-version reinstall and block downgrades -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of SSH Tool is already installed."
+                  AllowSameVersionUpgrades="yes"/>
+
+    <!-- Single embedded cabinet file -->
+    <MediaTemplate EmbedCab="yes"/>
+
+    <!-- ═══════════════════════════════════════════════════
+         Installation directory: C:\Program Files\SSH Tool\
+         ═══════════════════════════════════════════════════ -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLDIR" Name="SSH Tool">
+
+        <!-- Component 1: PowerShell + batch launcher scripts -->
+        <Component Id="CoreScripts">
+          <File Id="RemoteSupportPs1"
+                Name="remote-support.ps1"
+                Source="SRCDIR_PLACEHOLDER/remote-support.ps1"
+                KeyPath="yes"/>
+          <File Id="RemoteSupportBat"
+                Name="remote-support.bat"
+                Source="SRCDIR_PLACEHOLDER/remote-support.bat"/>
+          <File Id="RemoteSupportStopBat"
+                Name="remote-support-stop.bat"
+                Source="SRCDIR_PLACEHOLDER/remote-support-stop.bat"/>
+        </Component>
+
+        <!-- Component 2: bore tunnel binary -->
+        <Component Id="BoreExe">
+          <File Id="BoreExeFile"
+                Name="bore.exe"
+                Source="SRCDIR_PLACEHOLDER/bore.exe"
+                KeyPath="yes"/>
+        </Component>
+
+        <!-- Component 3: support public-key placeholder file -->
+        <Component Id="SupportPub">
+          <File Id="SupportPubFile"
+                Name="support.pub"
+                Source="SUPPORT_PUB_PLACEHOLDER"
+                KeyPath="yes"/>
+        </Component>
+
+      </Directory>
+    </StandardDirectory>
+
+    <!-- ═══════════════════════════════════════════════════
+         Start Menu shortcuts
+         ═══════════════════════════════════════════════════ -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="SSH Tool">
+
+        <Component Id="AppShortcuts">
+
+          <Shortcut Id="StartSupportShortcut"
+                    Name="Start Remote Support"
+                    Description="Start a temporary SSH support session"
+                    Target="[INSTALLDIR]remote-support.bat"
+                    WorkingDirectoryRef="INSTALLDIR"/>
+
+          <Shortcut Id="StopSupportShortcut"
+                    Name="Stop Remote Support"
+                    Description="Stop the active SSH support session"
+                    Target="[INSTALLDIR]remote-support-stop.bat"
+                    WorkingDirectoryRef="INSTALLDIR"/>
+
+          <!-- Remove the SSH Tool folder from Start Menu on uninstall -->
+          <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall"/>
+
+          <!--
+            A shortcuts-only component needs a non-file KeyPath.
+            We use a registry value under HKCU.
+          -->
+          <RegistryValue Root="HKCU"
+                         Key="Software\SSH Tool"
+                         Name="ShortcutsInstalled"
+                         Type="integer"
+                         Value="1"
+                         KeyPath="yes"/>
+        </Component>
+
+      </Directory>
+    </StandardDirectory>
+
+    <!-- ═══════════════════════════════════════════════════
+         Feature tree (single feature = all components)
+         ═══════════════════════════════════════════════════ -->
+    <Feature Id="ProductFeature"
+             Title="SSH Tool"
+             Description="SSH support tool scripts, bore.exe tunnel binary, and support key template"
+             Level="1">
+      <ComponentRef Id="CoreScripts"/>
+      <ComponentRef Id="BoreExe"/>
+      <ComponentRef Id="SupportPub"/>
+      <ComponentRef Id="AppShortcuts"/>
+    </Feature>
+
+    <!-- Add/Remove Programs metadata -->
+    <Property Id="ARPHELPLINK"      Value="https://github.com/your-org/ssh-tool"/>
+    <Property Id="ARPURLINFOABOUT"  Value="https://github.com/your-org/ssh-tool"/>
+    <Property Id="ARPNOREPAIR"      Value="1"/>
+
+  </Package>
+</Wix>

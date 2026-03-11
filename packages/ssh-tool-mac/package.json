@@ -1,0 +1,14 @@
+{
+  "name": "ssh-tool-mac",
+  "version": "0.1.0",
+  "private": true,
+  "description": "macOS Remote Login setup + bore tunnel helper",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
+

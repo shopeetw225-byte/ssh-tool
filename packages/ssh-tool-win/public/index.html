@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SSH Tool (Windows)</title>
+    <style>
+      :root {
+        --bg0: #0b1020;
+        --bg1: #0b1b2f;
+        --card: rgba(255, 255, 255, 0.06);
+        --card2: rgba(255, 255, 255, 0.08);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.62);
+        --border: rgba(255, 255, 255, 0.12);
+        --good: #4ade80;
+        --bad: #fb7185;
+        --warn: #fbbf24;
+        --accent: #38bdf8;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+          "Apple Color Emoji", "Segoe UI Emoji";
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: var(--sans);
+        background:
+          radial-gradient(1200px 800px at 10% 10%, rgba(56, 189, 248, 0.18), transparent 60%),
+          radial-gradient(900px 700px at 80% 30%, rgba(251, 191, 36, 0.12), transparent 55%),
+          radial-gradient(900px 700px at 60% 90%, rgba(244, 63, 94, 0.10), transparent 55%),
+          linear-gradient(160deg, var(--bg0), var(--bg1));
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 18px 44px;
+      }
+      header {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      .subtitle {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      @media (min-width: 920px) {
+        .grid {
+          grid-template-columns: 1.1fr 0.9fr;
+          gap: 14px;
+        }
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px 14px;
+        backdrop-filter: blur(8px);
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.18);
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--warn);
+      }
+      .dot.good {
+        background: var(--good);
+      }
+      .dot.bad {
+        background: var(--bad);
+      }
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.22);
+        color: var(--text);
+        font-family: var(--mono);
+        outline: none;
+      }
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.35);
+      }
+      .btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        padding: 9px 10px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .btn.primary {
+        border-color: rgba(56, 189, 248, 0.35);
+        background: rgba(56, 189, 248, 0.15);
+      }
+      .btn.danger {
+        border-color: rgba(251, 113, 133, 0.35);
+        background: rgba(251, 113, 133, 0.12);
+      }
+      .code {
+        font-family: var(--mono);
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 12px;
+        padding: 10px 12px;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .split {
+        display: grid;
+        gap: 12px;
+      }
+      @media (min-width: 620px) {
+        .split {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .logs {
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 260px;
+        overflow: auto;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+      }
+      .right {
+        margin-left: auto;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>SSH Tool (Windows)</h1>
+          <div class="subtitle">Local UI to manage OpenSSH Server and a bore.pub tunnel.</div>
+        </div>
+        <button class="btn" id="refreshBtn">Refresh</button>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <div class="split">
+            <div>
+              <label>API Token (x-ssh-tool-token)</label>
+              <input id="token" type="text" placeholder="Paste token from console..." />
+              <div class="hint">Stored in this browser only.</div>
+            </div>
+            <div>
+              <label>Timed Start (minutes)</label>
+              <div class="row">
+                <input id="minutes" type="number" min="1" max="1440" value="60" />
+                <button class="btn primary" id="timedStartBtn">Timed Start</button>
+                <button class="btn" id="cancelTimerBtn">Cancel Timer</button>
+              </div>
+              <div class="hint" id="timerHint">Timer: n/a</div>
+            </div>
+          </div>
+
+          <div style="height: 10px"></div>
+
+          <div class="row" id="statusRow">
+            <div class="pill"><span class="dot" id="dotInstalled"></span><span id="stInstalled">OpenSSH: ?</span></div>
+            <div class="pill"><span class="dot" id="dotSshd"></span><span id="stSshd">sshd: ?</span></div>
+            <div class="pill"><span class="dot" id="dotFirewall"></span><span id="stFirewall">Firewall: ?</span></div>
+            <div class="pill"><span class="dot" id="dotBore"></span><span id="stBore">bore: ?</span></div>
+            <div class="pill right"><span id="stHost">host</span></div>
+          </div>
+
+          <div style="height: 12px"></div>
+
+          <div class="split">
+            <div>
+              <label>LAN SSH Command</label>
+              <div class="row">
+                <div class="code" id="sshCmd">ssh user@ip</div>
+                <button class="btn" id="copySshBtn">Copy</button>
+              </div>
+              <div class="small" id="sshNote"></div>
+            </div>
+            <div>
+              <label>Public SSH Command (bore.pub)</label>
+              <div class="row">
+                <div class="code" id="boreCmd">not running</div>
+                <button class="btn" id="copyBoreBtn">Copy</button>
+              </div>
+              <div class="hint">This exposes local port 22 via a public relay. Stop it when done.</div>
+            </div>
+          </div>
+
+          <div style="height: 14px"></div>
+
+          <div class="row">
+            <button class="btn primary" id="setupAllBtn">Setup All</button>
+            <button class="btn" id="installBtn">Install</button>
+            <button class="btn" id="startBtn">Start</button>
+            <button class="btn" id="stopBtn">Stop</button>
+            <button class="btn" id="autoBtn">Autostart</button>
+            <button class="btn" id="fwBtn">Open Firewall</button>
+            <button class="btn" id="kickBtn">Kick All</button>
+            <button class="btn primary" id="boreStartBtn">Start Bore</button>
+            <button class="btn" id="boreStopBtn">Stop Bore</button>
+            <button class="btn danger" id="uninstallBtn">Uninstall</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div class="pill"><span class="dot good"></span>Logs</div>
+            <button class="btn right" id="clearLogBtn">Clear</button>
+          </div>
+          <div style="height: 10px"></div>
+          <div class="logs" id="logs"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tokenEl = document.getElementById("token");
+      const minutesEl = document.getElementById("minutes");
+      const logsEl = document.getElementById("logs");
+
+      const tokenKey = "ssh_tool_token";
+      tokenEl.value = localStorage.getItem(tokenKey) || "";
+      tokenEl.addEventListener("change", () => localStorage.setItem(tokenKey, tokenEl.value.trim()));
+
+      function apiFetch(url, opts = {}) {
+        const token = tokenEl.value.trim();
+        const headers = Object.assign({}, opts.headers || {}, { "x-ssh-tool-token": token });
+        return fetch(url, Object.assign({}, opts, { headers }));
+      }
+
+      function setPill(dotId, textId, ok, text) {
+        const dot = document.getElementById(dotId);
+        const el = document.getElementById(textId);
+        dot.classList.remove("good", "bad");
+        dot.classList.add(ok === true ? "good" : ok === false ? "bad" : "");
+        el.textContent = text;
+      }
+
+      function appendLog(line, kind = "info") {
+        const prefix = kind === "error" ? "[!] " : kind === "success" ? "[+] " : "";
+        logsEl.textContent += `${prefix}${line}\n`;
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
+
+      async function refresh() {
+        const token = tokenEl.value.trim();
+        if (!token) {
+          appendLog("Paste token from server console to continue.", "error");
+          return;
+        }
+
+        const st = await apiFetch("/api/status").then((r) => r.json());
+        if (!st.success) {
+          appendLog(`Status failed: ${st.output || "error"}`, "error");
+          return;
+        }
+
+        document.getElementById("stHost").textContent = `${st.hostname} (${st.ip})`;
+        setPill("dotInstalled", "stInstalled", st.openssh_installed === true, `OpenSSH: ${st.openssh_state}`);
+        setPill("dotSshd", "stSshd", st.sshd_running === true, `sshd: ${st.sshd_status}`);
+        setPill("dotFirewall", "stFirewall", st.firewall_open === true, `Firewall: ${st.firewall_open ? "open" : "closed"}`);
+        setPill("dotBore", "stBore", st.bore_running === true, `bore: ${st.bore_running ? "running" : "stopped"}`);
+
+        document.getElementById("sshCmd").textContent = st.ssh_command || "n/a";
+        document.getElementById("sshNote").textContent = `Active sessions: ${st.active_sessions ?? 0}`;
+
+        document.getElementById("boreCmd").textContent = st.bore_ssh || "not running";
+
+        const hint = document.getElementById("timerHint");
+        if (st.auto_shutdown_remain && st.auto_shutdown_remain > 0) {
+          hint.textContent = `Timer: ${st.auto_shutdown_remain}s remaining`;
+        } else {
+          hint.textContent = "Timer: n/a";
+        }
+
+        const logs = await apiFetch("/api/logs").then((r) => r.json());
+        if (logs.logs) {
+          logsEl.textContent = logs.logs.slice(-120).join("\n") + "\n";
+          if (logs.bore && logs.bore.length) {
+            logsEl.textContent += "\n[bore]\n" + logs.bore.slice(-120).join("\n") + "\n";
+          }
+        }
+      }
+
+      async function doPost(url, name, body) {
+        appendLog(`${name}...`);
+        const res = await apiFetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: body ? JSON.stringify(body) : "{}",
+        }).then((r) => r.json());
+        if (res.success === false) appendLog(`${name} failed: ${res.output || "error"}`, "error");
+        else appendLog(`${name} ok`, "success");
+        if (res.steps) {
+          for (const s of res.steps) {
+            appendLog(`${s.step}: ${s.success === false ? "FAIL" : "OK"} ${s.output || ""}`.trim(), s.success === false ? "error" : "info");
+          }
+        }
+        await refresh();
+      }
+
+      function copyText(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", refresh);
+      document.getElementById("setupAllBtn").addEventListener("click", () => doPost("/api/setup-all", "Setup All"));
+      document.getElementById("installBtn").addEventListener("click", () => doPost("/api/install", "Install OpenSSH"));
+      document.getElementById("startBtn").addEventListener("click", () => doPost("/api/start", "Start sshd"));
+      document.getElementById("stopBtn").addEventListener("click", () => doPost("/api/stop", "Stop sshd"));
+      document.getElementById("autoBtn").addEventListener("click", () => doPost("/api/autostart", "Enable autostart"));
+      document.getElementById("fwBtn").addEventListener("click", () => doPost("/api/firewall", "Open firewall"));
+      document.getElementById("kickBtn").addEventListener("click", () => doPost("/api/kick-all", "Kick all sessions"));
+      document.getElementById("boreStartBtn").addEventListener("click", () => doPost("/api/bore-start", "Start bore"));
+      document.getElementById("boreStopBtn").addEventListener("click", () => doPost("/api/bore-stop", "Stop bore"));
+      document.getElementById("uninstallBtn").addEventListener("click", () => doPost("/api/uninstall", "Uninstall OpenSSH"));
+
+      document.getElementById("timedStartBtn").addEventListener("click", () =>
+        doPost("/api/timed-start", "Timed start", { minutes: parseInt(minutesEl.value || "60", 10) })
+      );
+      document.getElementById("cancelTimerBtn").addEventListener("click", () => doPost("/api/cancel-timer", "Cancel timer"));
+
+      document.getElementById("copySshBtn").addEventListener("click", () => copyText(document.getElementById("sshCmd").textContent));
+      document.getElementById("copyBoreBtn").addEventListener("click", () => copyText(document.getElementById("boreCmd").textContent));
+
+      document.getElementById("clearLogBtn").addEventListener("click", () => (logsEl.textContent = ""));
+
+      refresh();
+      setInterval(refresh, 7000);
+    </script>
+  </body>
+</html>
+

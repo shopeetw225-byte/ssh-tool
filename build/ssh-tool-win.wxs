@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX v3 source for SSH Tool Windows installer.
+  Build with: wixl -a x64 -o dist/ssh-tool-win.msi build/ssh-tool-win.wxs
+  Requires msitools (brew install msitools) on macOS/Linux.
+
+  Do NOT manually edit SRCDIR_PLACEHOLDER — it is replaced by build-msi-win.sh.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <Product Id="*"
+           Name="SSH Tool"
+           Language="1033"
+           Version="0.1.0"
+           Manufacturer="SSH Tool"
+           UpgradeCode="5E8C3D1A-9F4B-4A7E-B2C8-1D6E3F0A9B4C">
+
+    <Package InstallerVersion="301"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="Remote SSH Support Tool — temporary SSH access for support sessions"
+             Comments="Installs scripts and bore.exe to Program Files\SSH Tool"/>
+
+    <!-- Allow upgrades of the same or older version; block downgrades -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of SSH Tool is already installed." AllowSameVersionUpgrades="yes"/>
+
+    <!-- Embed all files into a single embedded cabinet -->
+    <MediaTemplate EmbedCab="yes"/>
+
+    <!-- ═══════════════════════════════════════════════════
+         Directory tree
+         ═══════════════════════════════════════════════════ -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+
+      <!-- C:\Program Files\SSH Tool\ -->
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="SSH Tool">
+
+          <!-- ── Component 1: PowerShell + batch scripts ── -->
+          <Component Id="CoreScripts" Guid="A1B2C3D4-1A1A-1A1A-1A1A-EF1234567890">
+            <!-- KeyPath = the anchor file that Windows Installer tracks -->
+            <File Id="RemoteSupportPs1"
+                  Name="remote-support.ps1"
+                  Source="SRCDIR_PLACEHOLDER\remote-support.ps1"
+                  KeyPath="yes"/>
+            <File Id="RemoteSupportBat"
+                  Name="remote-support.bat"
+                  Source="SRCDIR_PLACEHOLDER\remote-support.bat"/>
+            <File Id="RemoteSupportStopBat"
+                  Name="remote-support-stop.bat"
+                  Source="SRCDIR_PLACEHOLDER\remote-support-stop.bat"/>
+          </Component>
+
+          <!-- ── Component 2: bore tunnel binary ── -->
+          <Component Id="BoreExe" Guid="B2C3D4E5-2B2B-2B2B-2B2B-F12345678901">
+            <File Id="BoreExeFile"
+                  Name="bore.exe"
+                  Source="SRCDIR_PLACEHOLDER\bore.exe"
+                  KeyPath="yes"/>
+          </Component>
+
+          <!-- ── Component 3: support.pub key placeholder ── -->
+          <Component Id="SupportPub" Guid="C3D4E5F6-3C3C-3C3C-3C3C-012345678902">
+            <File Id="SupportPubFile"
+                  Name="support.pub"
+                  Source="SRCDIR_PLACEHOLDER\support.pub"
+                  KeyPath="yes"/>
+          </Component>
+
+        </Directory>
+      </Directory>
+
+      <!-- Start Menu folder: Programs\SSH Tool\ -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppMenuFolder" Name="SSH Tool"/>
+      </Directory>
+
+    </Directory>
+
+    <!-- ═══════════════════════════════════════════════════
+         Start Menu shortcuts
+         (placed in the AppMenuFolder via DirectoryRef)
+         ═══════════════════════════════════════════════════ -->
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="AppShortcuts" Guid="D4E5F6A7-4D4D-4D4D-4D4D-123456789003">
+
+        <Shortcut Id="StartSupportShortcut"
+                  Name="Start Remote Support"
+                  Description="Start a temporary SSH support session (opens admin prompt)"
+                  Target="[INSTALLDIR]remote-support.bat"
+                  WorkingDirectory="INSTALLDIR"/>
+
+        <Shortcut Id="StopSupportShortcut"
+                  Name="Stop Remote Support"
+                  Description="Stop the active SSH support session"
+                  Target="[INSTALLDIR]remote-support-stop.bat"
+                  WorkingDirectory="INSTALLDIR"/>
+
+        <!-- Remove the Start Menu sub-folder on uninstall -->
+        <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall"/>
+
+        <!--
+          Shortcuts-only components need a non-file KeyPath.
+          A registry value under HKCU serves this purpose.
+        -->
+        <RegistryValue Root="HKCU"
+                       Key="Software\SSH Tool"
+                       Name="ShortcutsInstalled"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <!-- ═══════════════════════════════════════════════════
+         Features
+         ═══════════════════════════════════════════════════ -->
+    <Feature Id="ProductFeature"
+             Title="SSH Tool"
+             Description="SSH support tool: scripts, bore tunnel binary, and support key template"
+             Level="1">
+      <ComponentRef Id="CoreScripts"/>
+      <ComponentRef Id="BoreExe"/>
+      <ComponentRef Id="SupportPub"/>
+      <ComponentRef Id="AppShortcuts"/>
+    </Feature>
+
+    <!-- Add/Remove Programs metadata -->
+    <Property Id="ARPHELPLINK"      Value="https://github.com/your-org/ssh-tool"/>
+    <Property Id="ARPURLINFOABOUT"  Value="https://github.com/your-org/ssh-tool"/>
+    <Property Id="ARPNOREPAIR"      Value="1"/>
+
+  </Product>
+</Wix>

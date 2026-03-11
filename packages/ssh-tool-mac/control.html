@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SSH Remote Support</title>
+    <style>
+      :root {
+        --bg0: #0b1020;
+        --bg1: #0b1b2f;
+        --card: rgba(255, 255, 255, 0.06);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.62);
+        --border: rgba(255, 255, 255, 0.12);
+        --primary: rgba(56, 189, 248, 0.15);
+        --danger: rgba(251, 113, 133, 0.14);
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: var(--sans);
+        background:
+          radial-gradient(1000px 700px at 12% 12%, rgba(74, 222, 128, 0.12), transparent 60%),
+          radial-gradient(900px 700px at 78% 28%, rgba(56, 189, 248, 0.14), transparent 55%),
+          linear-gradient(160deg, var(--bg0), var(--bg1));
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 28px 18px 44px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+        backdrop-filter: blur(8px);
+        margin-bottom: 12px;
+      }
+      h1 {
+        margin: 0 0 6px 0;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 14px;
+        line-height: 1.55;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+        text-decoration: none;
+        user-select: none;
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .btn.primary {
+        border-color: rgba(56, 189, 248, 0.35);
+        background: var(--primary);
+      }
+      .btn.danger {
+        border-color: rgba(251, 113, 133, 0.35);
+        background: var(--danger);
+      }
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 10px;
+        line-height: 1.6;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .hr {
+        height: 1px;
+        background: var(--border);
+        margin: 12px 0;
+      }
+      .list {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>SSH Remote Support</h1>
+        <div class="sub">
+          Click <b>Start</b> to create a temporary support session. You will be asked for an
+          administrator password to enable Remote Login and apply temporary SSH restrictions.
+          After it starts, a new page will open showing the SSH command to send to support.
+        </div>
+
+        <div class="row">
+          <a class="btn primary" href="ssh-tool://start?minutes=60">Start (60 min)</a>
+          <a class="btn" href="ssh-tool://start?minutes=120">Start (120 min)</a>
+          <a class="btn danger" href="ssh-tool://stop">Stop Now</a>
+          <a class="btn" href="ssh-tool://recover">Recover</a>
+          <a class="btn" href="ssh-tool://status">Status</a>
+        </div>
+
+        <div class="small">
+          Tip: If your browser asks for confirmation to open “SSH Tool”, click <b>Open</b>.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sub" style="margin: 0">
+          Safety notes (recommended defaults):
+        </div>
+        <div class="hr"></div>
+        <ul class="list">
+          <li>
+            By default, SSH is exposed only through the <span class="mono">bore.pub</span>
+            tunnel (not your LAN).
+          </li>
+          <li>
+            If a support public key is bundled, password login is disabled. Otherwise a
+            temporary user + random password is used.
+          </li>
+          <li>Session auto-stops at the expiry time and restores previous settings.</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
+

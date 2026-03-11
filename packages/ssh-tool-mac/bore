@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+arch="$(uname -m)"
+
+case "$arch" in
+  arm64) bin="${DIR}/bore-arm64" ;;
+  x86_64) bin="${DIR}/bore-x86_64" ;;
+  *)
+    echo "Unsupported macOS arch: ${arch}" >&2
+    exit 1
+    ;;
+esac
+
+if [[ ! -x "$bin" ]]; then
+  echo "bore binary not found or not executable: $bin" >&2
+  exit 1
+fi
+
+exec "$bin" "$@"
+

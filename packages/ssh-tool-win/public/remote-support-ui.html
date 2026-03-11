@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SSH Tool (Windows) - Remote Support</title>
+    <style>
+      :root {
+        --bg0: #0b1020;
+        --bg1: #0b1b2f;
+        --card: rgba(255, 255, 255, 0.06);
+        --card2: rgba(255, 255, 255, 0.08);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.62);
+        --border: rgba(255, 255, 255, 0.12);
+        --good: #4ade80;
+        --bad: #fb7185;
+        --warn: #fbbf24;
+        --accent: #38bdf8;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: var(--sans);
+        background:
+          radial-gradient(1200px 800px at 10% 10%, rgba(56, 189, 248, 0.18), transparent 60%),
+          radial-gradient(900px 700px at 80% 30%, rgba(251, 191, 36, 0.12), transparent 55%),
+          radial-gradient(900px 700px at 60% 90%, rgba(244, 63, 94, 0.1), transparent 55%),
+          linear-gradient(160deg, var(--bg0), var(--bg1));
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 18px 44px;
+      }
+      header {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      .subtitle {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px 14px;
+        backdrop-filter: blur(8px);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      @media (min-width: 920px) {
+        .grid {
+          grid-template-columns: 1.1fr 0.9fr;
+          gap: 14px;
+        }
+      }
+      .split {
+        display: grid;
+        gap: 12px;
+      }
+      @media (min-width: 620px) {
+        .split {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+      input[type="text"],
+      input[type="number"],
+      select {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.22);
+        color: var(--text);
+        font-family: var(--mono);
+        outline: none;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        padding: 9px 10px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .btn.primary {
+        border-color: rgba(56, 189, 248, 0.35);
+        background: rgba(56, 189, 248, 0.15);
+      }
+      .btn.danger {
+        border-color: rgba(251, 113, 133, 0.35);
+        background: rgba(251, 113, 133, 0.12);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.18);
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--warn);
+      }
+      .dot.good {
+        background: var(--good);
+      }
+      .dot.bad {
+        background: var(--bad);
+      }
+      .code {
+        font-family: var(--mono);
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 12px;
+        padding: 10px 12px;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .logs {
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 320px;
+        overflow: auto;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+      }
+      .right {
+        margin-left: auto;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 8px 12px;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .kv b {
+        color: var(--text);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>SSH Tool (Windows)</h1>
+          <div class="subtitle">通过本地页面启动/停止“临时远程支持会话”（SSH + bore.pub，默认不开放局域网）。</div>
+        </div>
+        <button class="btn" id="refreshBtn">刷新</button>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <div class="split">
+            <div>
+              <label>会话时长（分钟）</label>
+              <input id="minutes" type="number" min="1" max="1440" value="60" />
+            </div>
+            <div>
+              <label>认证方式</label>
+              <select id="authMode">
+                <option value="auto">auto（有 support.pub 用公钥；否则临时密码）</option>
+                <option value="key">key（强制公钥）</option>
+                <option value="password">password（强制临时密码）</option>
+              </select>
+            </div>
+            <div>
+              <label>Relay（bore）</label>
+              <input id="relay" type="text" value="bore.pub" />
+            </div>
+            <div>
+              <label>端口</label>
+              <input id="localPort" type="number" min="1" max="65535" value="22" />
+            </div>
+          </div>
+
+          <div style="height: 10px"></div>
+
+          <div class="row">
+            <label style="display: inline-flex; align-items: center; gap: 10px; margin: 0">
+              <input id="allowLan" type="checkbox" />
+              允许局域网访问 22（不勾选则 sshd 绑定 127.0.0.1，仅隧道可连）
+            </label>
+          </div>
+
+          <div style="height: 12px"></div>
+
+          <div class="row">
+            <button class="btn primary" id="startBtn">开始会话</button>
+            <button class="btn danger" id="stopBtn">停止（恢复配置）</button>
+            <button class="btn" id="recoverBtn">Recover（兜底清理）</button>
+            <div class="pill right"><span class="dot" id="dotActive"></span><span id="stActive">会话：?</span></div>
+          </div>
+
+          <div class="hint">提示：可把 <code>support.pub</code> 放在 exe 同目录覆盖内置公钥；留空则自动创建临时账号 + 随机密码。</div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div class="pill"><span class="dot good"></span>日志</div>
+            <button class="btn right" id="clearLogBtn">清空</button>
+          </div>
+          <div style="height: 10px"></div>
+          <div class="logs" id="logs"></div>
+        </div>
+      </div>
+
+      <div style="height: 14px"></div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="row">
+            <div class="pill"><span class="dot good"></span>连接信息</div>
+            <button class="btn right" id="copyCmdBtn">复制命令</button>
+          </div>
+          <div style="height: 10px"></div>
+          <div class="code" id="sshCmd">n/a</div>
+          <div class="kv">
+            <div>用户</div><div><b id="sshUser">n/a</b></div>
+            <div>密码（若启用）</div><div><b id="sshPass">n/a</b></div>
+            <div>到期（UTC）</div><div><b id="expiresAt">n/a</b></div>
+            <div>剩余</div><div><b id="remain">n/a</b></div>
+            <div>安全</div><div><b id="secNote">n/a</b></div>
+          </div>
+          <div class="hint small">如果浏览器复制权限不可用，可以从上方框里手动复制。</div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div class="pill"><span class="dot good"></span>bore 输出</div>
+          </div>
+          <div style="height: 10px"></div>
+          <div class="logs" id="boreLogs"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_TOKEN = "__SSH_TOOL_TOKEN__";
+
+      const minutesEl = document.getElementById("minutes");
+      const authModeEl = document.getElementById("authMode");
+      const relayEl = document.getElementById("relay");
+      const localPortEl = document.getElementById("localPort");
+      const allowLanEl = document.getElementById("allowLan");
+
+      const logsEl = document.getElementById("logs");
+      const boreLogsEl = document.getElementById("boreLogs");
+
+      function apiFetch(url, opts = {}) {
+        const headers = Object.assign({}, opts.headers || {}, { "x-ssh-tool-token": API_TOKEN });
+        return fetch(url, Object.assign({}, opts, { headers }));
+      }
+
+      function appendLog(line, kind = "info") {
+        const prefix = kind === "error" ? "[!] " : kind === "success" ? "[+] " : "";
+        logsEl.textContent += `${prefix}${line}\n`;
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
+
+      function setActivePill(active) {
+        const dot = document.getElementById("dotActive");
+        const el = document.getElementById("stActive");
+        dot.classList.remove("good", "bad");
+        dot.classList.add(active === true ? "good" : active === false ? "bad" : "");
+        el.textContent = active ? "会话：运行中" : "会话：未运行";
+      }
+
+      function copyText(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+      }
+
+      async function refresh() {
+        const st = await apiFetch("/api/status").then((r) => r.json());
+        if (!st.success) {
+          appendLog(`Status failed: ${st.output || "error"}`, "error");
+          return;
+        }
+
+        const active = st.active === true;
+        setActivePill(active);
+        document.getElementById("sshCmd").textContent = st.ssh_command || "n/a";
+        document.getElementById("sshUser").textContent = st.ssh_user || "n/a";
+        document.getElementById("sshPass").textContent = st.ssh_password || "n/a";
+        document.getElementById("expiresAt").textContent = st.expires_at || "n/a";
+        document.getElementById("remain").textContent =
+          st.expires_remain_s != null ? `${st.expires_remain_s}s` : "n/a";
+        document.getElementById("secNote").textContent = !active
+          ? "n/a"
+          : st.allow_lan
+          ? "允许局域网访问"
+          : "仅 127.0.0.1 + bore 隧道";
+
+        const logs = await apiFetch("/api/logs").then((r) => r.json());
+        if (logs.success && Array.isArray(logs.logs)) {
+          logsEl.textContent = logs.logs.join("\n") + "\n";
+        }
+        if (logs.success && Array.isArray(logs.bore)) {
+          boreLogsEl.textContent = logs.bore.join("\n") + "\n";
+        }
+      }
+
+      async function doPost(url, name, body) {
+        appendLog(`${name}...`);
+        const res = await apiFetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body || {}),
+        }).then((r) => r.json());
+        if (res.success === false) appendLog(`${name} failed: ${res.output || "error"}`, "error");
+        else appendLog(`${name} ok`, "success");
+        if (res.output) appendLog(res.output);
+        await refresh();
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", refresh);
+      document.getElementById("clearLogBtn").addEventListener("click", () => (logsEl.textContent = ""));
+      document.getElementById("copyCmdBtn").addEventListener("click", () =>
+        copyText(document.getElementById("sshCmd").textContent)
+      );
+
+      document.getElementById("startBtn").addEventListener("click", () =>
+        doPost("/api/start", "Start session", {
+          minutes: parseInt(minutesEl.value || "60", 10),
+          auth_mode: authModeEl.value,
+          relay: relayEl.value,
+          local_port: parseInt(localPortEl.value || "22", 10),
+          allow_lan: allowLanEl.checked,
+        })
+      );
+
+      document.getElementById("stopBtn").addEventListener("click", () => doPost("/api/stop", "Stop session"));
+      document.getElementById("recoverBtn").addEventListener("click", () => doPost("/api/recover", "Recover"));
+
+      refresh();
+      setInterval(refresh, 7000);
+    </script>
+  </body>
+</html>
