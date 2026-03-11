@@ -13,6 +13,7 @@ APP_BUNDLE_NAME="${APP_NAME}.app"
 APP_BUNDLE_ID="com.openclaw.ssh-tool"
 APP_EXECUTABLE_NAME="ssh-tool"
 APP_VERSION="1.0.0"
+APP_URL_SCHEME="ssh-tool"
 
 require_file() {
   local path="$1"
@@ -75,6 +76,17 @@ build_app_bundle() {
   <string>1</string>
   <key>LSMinimumSystemVersion</key>
   <string>10.15</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>${APP_BUNDLE_ID}</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>${APP_URL_SCHEME}</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>
 EOF
@@ -109,8 +121,8 @@ EOF
   tmp_arm="$(mktemp -t ssh-tool.arm64.XXXXXX)"
   tmp_x86="$(mktemp -t ssh-tool.x86_64.XXXXXX)"
 
-  swiftc -O -sdk "${sdk}" -target arm64-apple-macos11.0 -framework AppKit -o "${tmp_arm}" "${swift_src}"
-  swiftc -O -sdk "${sdk}" -target x86_64-apple-macos10.15 -framework AppKit -o "${tmp_x86}" "${swift_src}"
+  swiftc -O -sdk "${sdk}" -target arm64-apple-macos11.0 -framework AppKit -framework Carbon -o "${tmp_arm}" "${swift_src}"
+  swiftc -O -sdk "${sdk}" -target x86_64-apple-macos10.15 -framework AppKit -framework Carbon -o "${tmp_x86}" "${swift_src}"
   lipo -create -output "${macos_dir}/${APP_EXECUTABLE_NAME}" "${tmp_arm}" "${tmp_x86}"
   rm -f "${tmp_arm}" "${tmp_x86}" >/dev/null 2>&1 || true
 

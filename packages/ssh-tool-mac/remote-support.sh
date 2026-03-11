@@ -79,7 +79,7 @@ persist_self_for_cleanup() {
 try_read_support_keys() {
   local p="$1"
   [[ -z "$p" || ! -f "$p" ]] && return 0
-  grep -v '^\s*#' "$p" | sed '/^\s*$/d' || true
+  grep -v '^[[:space:]]*#' "$p" | sed '/^[[:space:]]*$/d' || true
 }
 
 read_support_keys_strict() {
@@ -296,13 +296,107 @@ remote_login_state() {
   /usr/sbin/systemsetup -getremotelogin 2>/dev/null || true
 }
 
+remote_login_enabled_fallback() {
+  # launchctl print returns 0 if the service is loaded into the system domain.
+  if /bin/launchctl print system/com.openssh.sshd >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Fallback to port listener check (best-effort).
+  if lsof -nP -iTCP:"${LOCAL_PORT}" -sTCP:LISTEN 2>/dev/null | grep -E "TCP .*:${LOCAL_PORT} \\(LISTEN\\)" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  return 1
+}
+
 remote_login_enabled() {
-  remote_login_state | grep -qi "Remote Login: On"
+  local s=""
+  s="$(remote_login_state)"
+  if [[ -n "$s" ]]; then
+    printf '%s' "$s" | grep -qi "Remote Login: On" && return 0
+    printf '%s' "$s" | grep -qi "Remote Login: Off" && return 1
+  fi
+  remote_login_enabled_fallback
 }
 
 set_remote_login() {
   local onoff="$1" # on/off
-  /usr/sbin/systemsetup -setremotelogin "$onoff" >/dev/null 2>&1 <<<"yes"
+  local desired=0
+  if [[ "$onoff" == "on" ]]; then desired=1; fi
+
+  # If already in desired state, no-op.
+  if ((desired == 1)); then
+    remote_login_enabled_fallback && return 0
+  else
+    remote_login_enabled_fallback || return 0
+  fi
+
+  local out=""
+  # systemsetup may fail due to Full Disk Access requirements; do best-effort and check state afterwards.
+  out="$(/usr/sbin/systemsetup -setremotelogin "$onoff" 2>&1 <<<"yes" || true)"
+
+  if ((desired == 1)); then
+    remote_login_enabled_fallback && return 0
+  else
+    remote_login_enabled_fallback || return 0
+  fi
+
+  local plist="/System/Library/LaunchDaemons/ssh.plist"
+  local launchctl_log=""
+  run_launchctl() {
+    local name="$1"
+    shift
+    local out2=""
+    out2="$("$@" 2>&1 || true)"
+    if [[ -n "$out2" ]]; then
+      launchctl_log+=$'\n'"$name: $*"$'\n'"$out2"$'\n'
+    else
+      launchctl_log+=$'\n'"$name: $*"$'\n'
+    fi
+  }
+
+  if [[ "$desired" == "1" ]]; then
+    warn "systemsetup failed; enabling Remote Login via launchctl..."
+    run_launchctl "enable" /bin/launchctl enable system/com.openssh.sshd
+    run_launchctl "bootstrap" /bin/launchctl bootstrap system "$plist"
+    run_launchctl "enable" /bin/launchctl enable system/com.openssh.sshd
+    run_launchctl "kickstart" /bin/launchctl kickstart -k system/com.openssh.sshd
+
+    local deadline=$((SECONDS + 15))
+    while ((SECONDS < deadline)); do
+      if remote_login_enabled_fallback; then
+        return 0
+      fi
+      sleep 0.5
+    done
+
+    # Last resort: legacy load -w tends to work across macOS versions.
+    run_launchctl "load-w" /bin/launchctl load -w "$plist"
+
+    deadline=$((SECONDS + 15))
+    while ((SECONDS < deadline)); do
+      if remote_login_enabled_fallback; then
+        return 0
+      fi
+      sleep 0.5
+    done
+
+    err "Failed to enable Remote Login."
+    if [[ -n "$out" ]]; then
+      printf '%s\n' "$out" >&2
+    fi
+    if [[ -n "$launchctl_log" ]]; then
+      printf '%s\n' "$launchctl_log" >&2
+    fi
+    return 1
+  fi
+
+  warn "systemsetup failed; disabling Remote Login via launchctl..."
+  run_launchctl "disable" /bin/launchctl disable system/com.openssh.sshd
+  run_launchctl "bootout" /bin/launchctl bootout system "$plist"
+  run_launchctl "unload-w" /bin/launchctl unload -w "$plist"
+  return 0
 }
 
 restart_sshd() {
@@ -435,6 +529,8 @@ write_session_html() {
       <div class="row">
         <button class="btn primary" type="button" onclick="copyById('sshCmd')">Copy SSH Command</button>
         <button class="btn" type="button" onclick="copyById('sshPass')">Copy Password</button>
+        <a class="btn danger" href="ssh-tool://stop" onclick="return confirm('Stop the session now?')">Stop Session</a>
+        <a class="btn" href="ssh-tool://recover" onclick="return confirm('Recover (best-effort cleanup)?')">Recover</a>
       </div>
       <div class="kv">
         <div>User</div><div><b>${user}</b></div>
@@ -442,7 +538,7 @@ write_session_html() {
         <div>Expires at</div><div><b>${exp}</b></div>
         <div>Security</div><div><b>${note}</b></div>
       </div>
-      <div class="tip">To stop immediately: open the SSH Tool again (it will stop), or run this script again with <b>stop</b>.</div>
+      <div class="tip">Stop will open SSH Tool. Fallback: open SSH Tool again (it will stop), or run this script again with <b>stop</b>.</div>
     </div>
   </div>
 </body>
@@ -499,9 +595,18 @@ start_session() {
     exit 1
   fi
   if sshd_config_has_markers "$sshd_config"; then
-    err "Found ssh-tool markers in ${sshd_config}, but no state file at ${STATE_PATH}."
-    err "This usually means a previous run was interrupted. Run: ${SELF_PATH} recover"
-    exit 1
+    warn "Found ssh-tool markers in ${sshd_config}, but no state file at ${STATE_PATH}."
+    warn "Previous run may have been interrupted. Attempting auto-recovery..."
+    if "$SELF_PATH" recover --state "$STATE_PATH"; then
+      :
+    else
+      err "Auto-recovery failed. Run: ${SELF_PATH} recover"
+      exit 1
+    fi
+    if sshd_config_has_markers "$sshd_config"; then
+      err "Auto-recovery did not clear ssh-tool markers. Run: ${SELF_PATH} recover"
+      exit 1
+    fi
   fi
 
   ensure_host_keys
@@ -610,6 +715,8 @@ EOF
 
   rollback_start() {
     local rc="${1:-$?}"
+    local line="${2:-}"
+    local cmd="${3:-}"
     if [[ "$rollback_running" == "1" ]]; then
       exit "$rc"
     fi
@@ -617,6 +724,9 @@ EOF
     trap - EXIT INT TERM HUP ERR
     if [[ "$started_ok" == "1" ]]; then
       return 0
+    fi
+    if [[ -n "$line" && -n "$cmd" ]]; then
+      warn "Error at line ${line}: ${cmd}"
     fi
     warn "Start failed; restoring previous configuration..."
     if [[ -n "$bore_pid" ]]; then
@@ -646,7 +756,7 @@ EOF
     exit "$rc"
   }
 
-  trap 'rollback_start $?' ERR
+  trap 'rollback_start $? ${LINENO} "$BASH_COMMAND"' ERR
   trap 'rollback_start $?' EXIT
   trap 'rollback_start 130' INT TERM HUP
 
@@ -690,7 +800,14 @@ EOF
   cat "$sshd_tmp" >"$sshd_config"
   append_marker_block "$sshd_config" "$session_id" "${cfg_lines[@]}"
 
-  /usr/sbin/sshd -t -f "$sshd_config" >/dev/null
+  local sshd_test_err="${session_dir}/sshd_config.test.err"
+  if ! /usr/sbin/sshd -t -f "$sshd_config" 2>"$sshd_test_err" >/dev/null; then
+    err "sshd_config validation failed."
+    if [[ -s "$sshd_test_err" ]]; then
+      sed -n '1,120p' "$sshd_test_err" >&2 || true
+    fi
+    exit 1
+  fi
 
   set_remote_login on
   restart_sshd
@@ -774,11 +891,11 @@ stop_session() {
 
   json_get_string() {
     local key="$1"
-    sed -nE "s/^\\s*\\\"${key}\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"\\s*,?\\s*$/\\1/p" "$state_path" | head -n 1
+    sed -nE "s/^[[:space:]]*\\\"${key}\\\"[[:space:]]*:[[:space:]]*\\\"([^\\\"]*)\\\"[[:space:]]*,?[[:space:]]*$/\\1/p" "$state_path" | head -n 1
   }
   json_get_number() {
     local key="$1"
-    sed -nE "s/^\\s*\\\"${key}\\\"\\s*:\\s*([0-9]+)\\s*,?\\s*$/\\1/p" "$state_path" | head -n 1
+    sed -nE "s/^[[:space:]]*\\\"${key}\\\"[[:space:]]*:[[:space:]]*([0-9]+)[[:space:]]*,?[[:space:]]*$/\\1/p" "$state_path" | head -n 1
   }
 
   local bore_pid sshd_backup auth_backup_flag sshd_config remote_login_was_on session_dir auth_keys
@@ -817,9 +934,9 @@ stop_session() {
   fi
 
   if [[ "$remote_login_was_on" == "1" ]]; then
-    set_remote_login on
+    set_remote_login on || warn "Failed to re-enable Remote Login."
   else
-    set_remote_login off
+    set_remote_login off || warn "Failed to disable Remote Login."
   fi
   restart_sshd
 
@@ -918,10 +1035,10 @@ status_session() {
     msg "No active session."
     exit 0
   fi
-  sed -nE 's/^\\s*"session_id"\\s*:\\s*"([^"]+)".*/Session: \\1/p;
-           s/^\\s*"expires_at"\\s*:\\s*"([^"]+)".*/Expires: \\1/p;
-           s/^\\s*"ssh_command"\\s*:\\s*"([^"]+)".*/SSH:     \\1/p;
-           s/^\\s*"relay"\\s*:\\s*"([^"]+)".*/Relay:   \\1/p' "$STATE_PATH"
+  sed -nE 's/^[[:space:]]*"session_id"[[:space:]]*:[[:space:]]*"([^"]+)".*/Session: \\1/p;
+           s/^[[:space:]]*"expires_at"[[:space:]]*:[[:space:]]*"([^"]+)".*/Expires: \\1/p;
+           s/^[[:space:]]*"ssh_command"[[:space:]]*:[[:space:]]*"([^"]+)".*/SSH:     \\1/p;
+           s/^[[:space:]]*"relay"[[:space:]]*:[[:space:]]*"([^"]+)".*/Relay:   \\1/p' "$STATE_PATH"
 }
 
 case "$ACTION" in
