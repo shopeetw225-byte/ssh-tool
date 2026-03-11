@@ -20,7 +20,72 @@
 常见提示：
 
 - Windows：如果被 SmartScreen 拦截，点「更多信息」→「仍要运行」。
-- macOS：如果提示“无法验证开发者/已损坏”，可右键 `SSH Tool.app` → Open，或执行：`xattr -dr com.apple.quarantine /Applications/SSH\\ Tool.app`
+- macOS：如果提示“Apple 无法验证/已损坏/无法打开”，可右键 `SSH Tool.app` → Open，或执行：`sudo xattr -dr com.apple.quarantine "/Applications/SSH Tool.app"`
+
+## 安全关闭（务必做）
+
+远程支持结束后，请按下面顺序“彻底关闭并恢复配置”（仅断开 SSH 连接**不会**自动关闭隧道/服务）。
+
+✅ 一、先关闭「远程连接窗口」（支持人员这边）
+
+在你当前的 SSH 窗口输入：
+
+```bash
+exit
+```
+
+👉 这一步只是断开远程控制，不会关闭服务。
+
+✅ 二、去被支持的那台电脑关闭会话（最重要 ⭐）
+
+### Windows（被支持端）
+
+在 SSH Tool 页面点击：
+
+- `停止（恢复配置）`
+
+点击后工具会自动：
+
+- 删除临时用户 `support_****`
+- 停止 `sshd`
+- 关闭 `bore` 隧道
+- 恢复 `sshd_config` / `authorized_keys` 等配置
+
+日志出现类似：
+
+`Session stopped and configuration restored.`
+
+表示已彻底关闭。
+
+如果页面卡住 / 按钮点不了：
+
+- 先点：`Recover（兜底清理）`
+- 或在管理员 PowerShell 执行：`.\ssh-tool-win.exe recover`
+
+最极端情况（手动关闭，管理员 PowerShell）：
+
+```powershell
+Stop-Service sshd -ErrorAction SilentlyContinue
+taskkill /f /im bore.exe
+# 把 support_**** 换成页面/日志里显示的临时用户名
+net user support_**** /delete
+```
+
+### macOS（被支持端）
+
+优先使用会话页面里的按钮：
+
+- `Stop Session`（立即停止并恢复）
+- `Recover`（兜底清理）
+
+如果按钮不可用：
+
+- 再打开一次 `SSH Tool.app`（检测到有会话会执行停止/恢复）
+- 或脚本版运行：`./remote-support.sh stop`（失败再 `./remote-support.sh recover`）
+
+✅ 三、最终确认（推荐）
+
+支持人员再尝试连接一次刚才的命令（例如 `ssh ...`），如果返回 `Connection refused/closed` 等错误，说明远程支持已完全关闭。
 
 ## 顾客侧使用（Windows）
 
