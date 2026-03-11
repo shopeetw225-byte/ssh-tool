@@ -196,6 +196,27 @@ function Append-MarkerBlock([string]$Path, [string]$SessionId, [string[]]$Lines)
   Add-Content -LiteralPath $Path -Encoding ASCII -Value "# ssh-tool session $SessionId END"
 }
 
+function Insert-MarkerBlock-BeforeFirstMatch([string[]]$FileLines, [string]$SessionId, [string[]]$Lines) {
+  $block = @("")
+  $block += "# ssh-tool session $SessionId BEGIN"
+  $block += $Lines
+  $block += "# ssh-tool session $SessionId END"
+
+  if (-not $FileLines) { return $block }
+
+  $matchIndex = $null
+  for ($i = 0; $i -lt $FileLines.Count; $i++) {
+    if ($FileLines[$i] -match '^\s*Match\s') { $matchIndex = $i; break }
+  }
+
+  if ($null -eq $matchIndex) { return @($FileLines + $block) }
+  if ($matchIndex -le 0) { return @($block + $FileLines) }
+
+  $head = @($FileLines[0..($matchIndex - 1)])
+  $tail = @($FileLines[$matchIndex..($FileLines.Count - 1)])
+  return @($head + $block + $tail)
+}
+
 function Test-SshToolMarkersInFile([string]$Path) {
   if (-not (Test-Path -LiteralPath $Path)) { return $false }
   $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue
@@ -476,7 +497,9 @@ function Start-Session {
       if ($line -match $rx) { continue }
       $filtered += $line
     }
-    Set-Content -LiteralPath $sshdConfig -Encoding ASCII -Value $filtered
+    # Insert our temporary session directives into the global section, BEFORE any "Match" block.
+    # In sshd_config, a Match block applies to the rest of the file; directives like "Port" are
+    # invalid inside Match. Windows' default sshd_config often ends with a Match block.
 
     $configLines = @(
       "Port $LocalPort",
@@ -510,7 +533,8 @@ function Start-Session {
     if (-not $AllowLan) {
       $configLines += "ListenAddress 127.0.0.1"
     }
-    Append-MarkerBlock -Path $sshdConfig -SessionId $sessionId -Lines $configLines
+    $finalLines = Insert-MarkerBlock-BeforeFirstMatch -FileLines $filtered -SessionId $sessionId -Lines $configLines
+    Set-Content -LiteralPath $sshdConfig -Encoding ASCII -Value $finalLines
 
     # Validate sshd_config if sshd.exe is available.
     $sshdExe = Join-Path $env:WINDIR "System32\OpenSSH\sshd.exe"
