@@ -17,6 +17,11 @@
 - macOS（推荐）：`ssh-tool-mac.dmg`（内含 `SSH Tool.app`）
 - macOS 脚本版：`ssh-tool-mac.zip`
 
+常见提示：
+
+- Windows：如果被 SmartScreen 拦截，点「更多信息」→「仍要运行」。
+- macOS：如果提示“无法验证开发者/已损坏”，可右键 `SSH Tool.app` → Open，或执行：`xattr -dr com.apple.quarantine /Applications/SSH\\ Tool.app`
+
 ## 顾客侧使用（Windows）
 
 两种分发方式：
