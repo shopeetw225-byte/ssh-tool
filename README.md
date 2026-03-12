@@ -28,7 +28,9 @@
 
 - 如果被 SmartScreen 拦截：点「更多信息」→「仍要运行」。
 - 如果提示安装 OpenSSH Server 失败：通常是 Windows Update / BITS 被禁用或无法访问更新源（企业策略/离线环境）。请先让 IT 开启 Windows Update，或在「设置 → 应用 → 可选功能」里手动安装 `OpenSSH Server`。
-- 本工具也支持“离线/绕过更新”的安装方式：下载 `OpenSSH-Win64.zip`（PowerShell/Win32-OpenSSH），放到 `ssh-tool-win.exe` 同目录并命名为 `OpenSSH-Win64.zip`，再点 Start 即可。
+- 离线/绕过更新安装（推荐给企业/精简系统）：下载 `OpenSSH-Win64.zip`（PowerShell/Win32-OpenSSH），放到 `ssh-tool-win.exe` **同目录**并命名为 `OpenSSH-Win64.zip`，再点 Start 即可。
+  - 工具会解压到：`C:\ProgramData\ssh-tool\openssh\` 并执行 `install-sshd.ps1` 注册 `sshd` 服务
+  - 也可用环境变量指定 zip 路径：`SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`
 
 ### macOS 快速开始（推荐：DMG）
 

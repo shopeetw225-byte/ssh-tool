@@ -648,7 +648,82 @@ func ensurePayloadDir(supportPubPath string) (string, error) {
 	if err := os.WriteFile(filepath.Join(payloadDir, "support.pub"), supportPubBytes, 0o644); err != nil {
 		return "", err
 	}
+
+	if err := syncOpenSSHZipToPayload(payloadDir); err != nil {
+		return "", err
+	}
 	return payloadDir, nil
+}
+
+func syncOpenSSHZipToPayload(payloadDir string) error {
+	src, err := findOpenSSHZipSource()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(src) == "" {
+		return nil
+	}
+	dst := filepath.Join(payloadDir, "OpenSSH-Win64.zip")
+	return copyIfDifferent(src, dst, 0o644)
+}
+
+func findOpenSSHZipSource() (string, error) {
+	if p := strings.TrimSpace(os.Getenv("SSH_TOOL_OPENSSH_ZIP")); p != "" {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+
+	exePath, err := os.Executable()
+	if err != nil || strings.TrimSpace(exePath) == "" {
+		return "", nil
+	}
+	exeDir := filepath.Dir(exePath)
+	p := filepath.Join(exeDir, "OpenSSH-Win64.zip")
+	if _, err := os.Stat(p); err == nil {
+		return p, nil
+	}
+	return "", nil
+}
+
+func copyIfDifferent(src, dst string, mode os.FileMode) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if dstInfo, err := os.Stat(dst); err == nil {
+		if dstInfo.Size() == srcInfo.Size() {
+			return nil
+		}
+	}
+
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	tmp := dst + ".tmp"
+	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(out, in)
+	closeErr := out.Close()
+	if copyErr != nil {
+		_ = os.Remove(tmp)
+		return copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(tmp)
+		return closeErr
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 func payloadBaseDir() string {
