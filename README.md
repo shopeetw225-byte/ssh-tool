@@ -32,6 +32,32 @@
   - 工具会解压到：`C:\ProgramData\ssh-tool\openssh\` 并执行 `install-sshd.ps1` 注册 `sshd` 服务
   - 也可用环境变量指定 zip 路径：`SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`
 
+### Windows：离线安装 OpenSSH（详细）
+
+当目标机器 **Windows Update 被禁用/被 WSUS 策略拦截/离线** 时，`Add-WindowsCapability` 可能会失败。这时请按下面方式准备离线包：
+
+1. 在一台可上网的机器下载 `OpenSSH-Win64.zip`（项目：PowerShell/Win32-OpenSSH）
+2. 把该 zip 拷贝到目标 Windows 机器，并放到 `ssh-tool-win.exe` 同目录：
+
+```
+ssh-tool-win.exe
+OpenSSH-Win64.zip
+support.pub    (可选)
+```
+
+3. 双击运行 `ssh-tool-win.exe`，点 `Start`（工具会自动用 zip 安装并注册 `sshd` 服务）
+
+安装目录说明：
+
+- OpenSSH 解压/安装缓存：`C:\ProgramData\ssh-tool\openssh\`
+- 会话状态文件：`C:\ProgramData\ssh-tool\active-session.json`
+- 运行时解包目录：`%LOCALAPPDATA%\ssh-tool-win\payload-*`（可用 `SSH_TOOL_PAYLOAD_DIR` 覆盖）
+
+可选环境变量：
+
+- `SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`（指定离线 zip 位置）
+- `SSH_TOOL_OPENSSH_ZIP_URL=...`（自定义下载地址；不建议普通用户使用）
+
 ### macOS 快速开始（推荐：DMG）
 
 1. 下载并打开 `ssh-tool-mac.dmg`
