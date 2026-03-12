@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("start", "stop", "status", "recover")]
+  [ValidateSet("start", "stop", "status", "recover", "install-openssh")]
   [string]$Action = "start",
 
   [ValidateSet("auto", "key", "password")]
@@ -1022,7 +1022,14 @@ function Show-Status {
   Write-Host "Relay:   $($state.relay)"
 }
 
+function Install-OpenSSHOnly {
+  Ensure-AdminRelaunch
+  Install-OpenSSHServerIfMissing
+  Write-Info "OpenSSH Server is installed."
+}
+
 if ($Action -eq "start") { Start-Session }
 elseif ($Action -eq "stop") { Stop-Session }
 elseif ($Action -eq "status") { Show-Status }
 elseif ($Action -eq "recover") { Recover-Session }
+elseif ($Action -eq "install-openssh") { Install-OpenSSHOnly }

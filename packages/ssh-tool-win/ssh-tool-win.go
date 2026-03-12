@@ -172,6 +172,10 @@ func runUI(args []string) error {
 		return err
 	}
 
+	if err := ensureOpenSSHInstalled(payloadDir); err != nil {
+		return err
+	}
+
 	statePath := cfg.statePath
 	if strings.TrimSpace(statePath) == "" {
 		statePath = getEnvDefault("SSH_TOOL_STATE_PATH", `C:\ProgramData\ssh-tool\active-session.json`)
@@ -231,6 +235,61 @@ func runUI(args []string) error {
 		return nil
 	}
 	return err
+}
+
+func ensureOpenSSHInstalled(payloadDir string) error {
+	ok, err := isServicePresent("sshd")
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+
+	fmt.Fprintln(os.Stderr, "[*] OpenSSH Server not found; installing before starting UI...")
+
+	scriptPath := filepath.Join(payloadDir, "remote-support.ps1")
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "powershell.exe",
+		"-NoProfile",
+		"-NonInteractive",
+		"-ExecutionPolicy", "Bypass",
+		"-File", scriptPath,
+		"-Action", "install-openssh",
+	)
+	cmd.Dir = payloadDir
+	cmd.Env = append(os.Environ(), "SSH_TOOL_NO_OPEN_HTML=1")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return errors.New("OpenSSH Server install timed out")
+		}
+		return err
+	}
+
+	ok, err = isServicePresent("sshd")
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("OpenSSH Server install finished but sshd service is still missing")
+	}
+
+	return nil
+}
+
+func isServicePresent(name string) (bool, error) {
+	script := fmt.Sprintf("$svc = Get-Service -Name %s -ErrorAction SilentlyContinue; if ($svc) { 'true' } else { 'false' }", psSingleQuote(name))
+	out, err := runPSCommand(script, 10*time.Second)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(strings.ToLower(out), "true"), nil
 }
 
 type uiServer struct {
