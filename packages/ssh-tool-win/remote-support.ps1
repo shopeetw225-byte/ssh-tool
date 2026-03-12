@@ -197,6 +197,15 @@ function Ensure-Service-Startable([string]$Name) {
   }
 }
 
+function Test-ServiceRunning([string]$Name) {
+  try {
+    $svc = Get-Service -Name $Name -ErrorAction Stop
+    return ($svc.Status -eq "Running")
+  } catch {
+    return $false
+  }
+}
+
 function Expand-Zip([string]$ZipPath, [string]$DestDir) {
   if (-not (Test-Path -LiteralPath $ZipPath)) { throw "Zip not found: $ZipPath" }
   Ensure-Dir $DestDir
@@ -277,11 +286,31 @@ function Install-OpenSSHServerIfMissing {
   if ($svc) { return }
   Write-Info "OpenSSH Server not found; installing..."
 
+  # If a local OpenSSH package is provided (offline bundle), prefer it and skip Windows Update.
+  $zipLocal = $null
+  if ($env:SSH_TOOL_OPENSSH_ZIP -and (Test-Path -LiteralPath $env:SSH_TOOL_OPENSSH_ZIP)) {
+    $zipLocal = $env:SSH_TOOL_OPENSSH_ZIP
+  } else {
+    $candidate = Join-Path $PSScriptRoot "OpenSSH-Win64.zip"
+    if (Test-Path -LiteralPath $candidate) { $zipLocal = $candidate }
+  }
+  if ($zipLocal) {
+    Install-OpenSSHServerFromZip -ZipPath $zipLocal
+    return
+  }
+
   # Add-WindowsCapability downloads optional features via Windows Update. On many managed PCs,
   # Windows Update/BITS may be disabled; try to start the required services first.
   Ensure-Service-Startable "wuauserv"
   Ensure-Service-Startable "bits"
   Ensure-Service-Startable "TrustedInstaller"
+
+  # If Windows Update prerequisites are not running, avoid hanging and go straight to fallback.
+  if (-not (Test-ServiceRunning "bits") -or -not (Test-ServiceRunning "wuauserv")) {
+    Write-Warn "Windows Update prerequisites are not running; using fallback installer (Win32-OpenSSH zip)..."
+    Install-OpenSSHServerFallback
+    return
+  }
 
   try {
     Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 -ErrorAction Stop | Out-Null

@@ -51,6 +51,8 @@ support.pub    (可选)
 
 3. 双击运行 `ssh-tool-win.exe`，点 `Start`（工具会自动用 zip 安装并注册 `sshd` 服务）
 
+注意：一定要先“完整解压”离线包（不要在压缩包内直接双击 exe），并确保 `OpenSSH-Win64.zip` 与 exe 在同一目录。
+
 安装目录说明：
 
 - OpenSSH 解压/安装缓存：`C:\ProgramData\ssh-tool\openssh\`
