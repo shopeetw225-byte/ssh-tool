@@ -72,6 +72,15 @@ support.pub    (可选)
 - 右键 `SSH Tool.app` → Open
 - 或执行：`sudo xattr -dr com.apple.quarantine "/Applications/SSH Tool.app"`
 
+### macOS：离线/目录说明
+
+- DMG/ZIP 安装包内已包含 `bore`，**不需要联网**。如果看到提示 “bore not found; downloading...”，说明你拿到的包缺文件或被误删；请重新从 Releases 下载，或手动安装：`brew install bore-cli`。
+- 默认状态目录：`/var/tmp/ssh-tool/`（可用 `SSH_TOOL_STATE_DIR` 覆盖）
+  - 状态文件：`/var/tmp/ssh-tool/active-session.json`（可用 `SSH_TOOL_STATE_PATH` 覆盖）
+- 公钥文件 `support.pub`：
+  - DMG：公钥随包内置（需要你们在发布前打包时写入）
+  - ZIP：用户可直接编辑解压目录下的 `support.pub`（留空则走临时账号+随机密码）
+
 ## 安全关闭（务必做）
 
 远程支持结束后，请按下面顺序“彻底关闭并恢复配置”（仅断开 SSH 连接**不会**自动关闭隧道/服务）。
