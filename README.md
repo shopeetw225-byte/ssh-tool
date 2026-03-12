@@ -10,15 +10,17 @@
 
 ### 选哪个安装包？
 
-| 平台 | 推荐（给用户） | 备选（脚本版） |
-|---|---|---|
-| Windows x64 | `ssh-tool-win.exe` | `ssh-tool-win.zip` |
-| Windows ARM64 | `ssh-tool-win-arm64.exe` | `ssh-tool-win.zip` |
-| macOS | `ssh-tool-mac.dmg`（内含 `SSH Tool.app`） | `ssh-tool-mac.zip` |
+| 平台 | 推荐（开箱即用） | 离线/企业策略（含 OpenSSH） | 脚本版 |
+|---|---|---|---|
+| Windows x64 | `ssh-tool-win.exe` | `ssh-tool-win-offline.zip` | `ssh-tool-win.zip` |
+| Windows ARM64 | `ssh-tool-win-arm64.exe` | `ssh-tool-win-offline.zip` | `ssh-tool-win.zip` |
+| macOS | `ssh-tool-mac.dmg`（内含 `SSH Tool.app`） | — | `ssh-tool-mac.zip` |
 
 ### Windows 快速开始（推荐：单文件 EXE）
 
-1. 下载 `ssh-tool-win.exe`（或 ARM64 用 `ssh-tool-win-arm64.exe`）
+1. 下载：
+   - 普通网络环境：`ssh-tool-win.exe`（或 ARM64 用 `ssh-tool-win-arm64.exe`）
+   - **离线/更新被禁用**：`ssh-tool-win-offline.zip`（解压后运行对应 exe）
 2. （可选）把 `support.pub` 放在 exe 同目录（推荐，免密码；留空则走“临时账号 + 随机密码”）
 3. 双击运行 → 允许 UAC → 会自动打开本地页面 → 点 `开始会话`
 4. 把页面里的 `ssh ...` 命令（以及密码如有）发给支持人员
@@ -35,6 +37,8 @@
 ### Windows：离线安装 OpenSSH（详细）
 
 当目标机器 **Windows Update 被禁用/被 WSUS 策略拦截/离线** 时，`Add-WindowsCapability` 可能会失败。这时请按下面方式准备离线包：
+
+最简单做法：直接下载 `ssh-tool-win-offline.zip`（Release 里提供，已包含 `OpenSSH-Win64.zip`）。
 
 1. 在一台可上网的机器下载 `OpenSSH-Win64.zip`（项目：PowerShell/Win32-OpenSSH）
 2. 把该 zip 拷贝到目标 Windows 机器，并放到 `ssh-tool-win.exe` 同目录：
