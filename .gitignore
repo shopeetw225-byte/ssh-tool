@@ -8,6 +8,9 @@ dist/
 # Generated WiX source (has absolute paths)
 build/ssh-tool-win-final.wxs
 
+# Cached downloads
+build/OpenSSH-Win64.zip
+
 # Dependencies
 **/node_modules/
 

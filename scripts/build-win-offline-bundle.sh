@@ -46,9 +46,12 @@ resolve_openssh_zip() {
 
   mkdir -p "${BUILD_DIR}"
   local url="${SSH_TOOL_OPENSSH_ZIP_URL:-${OPENSSH_URL_DEFAULT}}"
-  echo "[*] Downloading OpenSSH-Win64.zip for offline bundle..."
-  echo "    ${url}"
-  curl -fSL --retry 2 --connect-timeout 15 -o "${cached}" "${url}"
+  echo "[*] Downloading OpenSSH-Win64.zip for offline bundle..." >&2
+  echo "    ${url}" >&2
+  curl -fSL --retry 2 --connect-timeout 15 -o "${cached}" "${url}" >&2
+  if [[ ! -f "${cached}" ]]; then
+    return 1
+  fi
   printf '%s' "${cached}"
 }
 
@@ -63,14 +66,20 @@ main() {
   SSH_TOOL_WIN_ARCH=arm64 "${ROOT_DIR}/scripts/build-win-exe.sh"
 
   local openssh_zip
-  openssh_zip="$(resolve_openssh_zip)"
+  openssh_zip="$(resolve_openssh_zip)" || true
+  if [[ -z "${openssh_zip}" || ! -f "${openssh_zip}" ]]; then
+    echo "[x] Failed to prepare OpenSSH-Win64.zip for offline bundle." >&2
+    echo "    - Set SSH_TOOL_OPENSSH_ZIP to a local zip file, or" >&2
+    echo "    - Allow network access so the script can download it." >&2
+    exit 1
+  fi
 
   local support_pub
   support_pub="$(select_support_pub)"
 
   local stage
   stage="$(mktemp -d)"
-  trap 'rm -rf "${stage}"' EXIT
+  trap "rm -rf \"${stage}\"" EXIT
 
   mkdir -p "${stage}/${ZIP_NAME}"
   cp -f "${DIST_DIR}/ssh-tool-win.exe" "${stage}/${ZIP_NAME}/ssh-tool-win.exe"
@@ -99,4 +108,3 @@ EOF
 }
 
 main "$@"
-
