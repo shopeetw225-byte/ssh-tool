@@ -1,282 +1,326 @@
 # ssh-tool (Customer Remote Support)
 
-在 **默认安全** 的前提下，为客户临时开启 SSH 远程支持（默认不对局域网开放，只通过 `bore.pub` 中继），并在结束后自动/手动恢复配置。
+`ssh-tool` is a temporary SSH remote support helper for customer machines. It is designed to start from a safe default: on Windows it does not expose SSH to the local network by default and instead uses `bore.pub` as the public relay, while macOS uses Remote Login plus the same relay model when needed. The tool can authenticate with a shipped support public key or fall back to a temporary account with a random password, and it includes explicit stop/recover paths so the session can be cleaned up after use.
 
-## ⬇️ 下载安装（从 Releases）
+## At A Glance
 
-👉 **直接下载最新版安装包（Releases / Latest）：** [点这里](../../releases/latest)
+| Area | What this repo provides |
+|---|---|
+| Customer experience | A local UI for starting, stopping, and recovering a temporary support session |
+| Network path | SSH access via `bore.pub` relay by default |
+| Authentication | Support `support.pub` key, or a temporary user + random password when no key is provided |
+| Platforms | Windows and macOS |
+| Packaging | Release bundles, plus developer build scripts for ZIP, EXE, DMG, and MSI outputs |
 
-> 安装包在 Release 页面的 **Assets** 里；不要使用 `Code → Download ZIP`（那是源码，不含 `exe/dmg`）。
+## Supported Platforms
 
-### 选哪个安装包？
+| Platform | Main release artifact | Other shipped format(s) |
+|---|---|---|
+| Windows x64 | `ssh-tool-win.exe` | `ssh-tool-win-offline.zip`, `ssh-tool-win.zip` |
+| Windows ARM64 | `ssh-tool-win-arm64.exe` | `ssh-tool-win-offline.zip`, `ssh-tool-win.zip` |
+| macOS Intel / Apple Silicon | `ssh-tool-mac.dmg` | `ssh-tool-mac.zip` |
 
-| 平台 | 推荐（开箱即用） | 离线/企业策略（含 OpenSSH） | 脚本版 |
-|---|---|---|---|
-| Windows x64 | `ssh-tool-win.exe` | `ssh-tool-win-offline.zip` | `ssh-tool-win.zip` |
-| Windows ARM64 | `ssh-tool-win-arm64.exe` | `ssh-tool-win-offline.zip` | `ssh-tool-win.zip` |
-| macOS | `ssh-tool-mac.dmg`（内含 `SSH Tool.app`） | — | `ssh-tool-mac.zip` |
+## Development Status
 
-### Windows 快速开始（推荐：单文件 EXE）
+- Current codebase version is `0.1.0`.
+- The repo already has release packaging for Windows and macOS.
+- The main supported workflows are the GUI-driven Windows/macOS bundles and the scripted ZIP flows.
+- A Windows MSI build path exists for developers in `scripts/build-msi-win.sh`, but the primary release artifacts in the repo are the EXE/ZIP/DMG bundles.
 
-1. 下载：
-   - 普通网络环境：`ssh-tool-win.exe`（或 ARM64 用 `ssh-tool-win-arm64.exe`）
-   - **离线/更新被禁用**：`ssh-tool-win-offline.zip`（解压后运行对应 exe）
-2. （可选）把 `support.pub` 放在 exe 同目录（推荐，免密码；留空则走“临时账号 + 随机密码”）
-3. 双击运行 → 允许 UAC
-   - 若未安装 OpenSSH：会先自动安装（可能需要几分钟），完成后才会打开本地页面
-4. 会自动打开本地页面 → 点 `开始会话`
-5. 把页面里的 `ssh ...` 命令（以及密码如有）发给支持人员
-6. 用完后在页面点 `停止（恢复配置）`
+## Known Limitations / Next Steps
 
-常见提示：
+- Windows support depends on OpenSSH Server being installed. In locked-down or offline environments, the offline bundle or `OpenSSH-Win64.zip` path is required.
+- macOS support depends on `sudo` access for Remote Login and cleanup actions.
+- The relay model depends on `bore.pub` or a locally available `bore` binary.
+- The repo does not currently advertise an automated test suite in the docs; build scripts are the main verification path.
+- If you need broader distribution formats or more environment-specific packaging, the existing MSI and offline bundle scripts are the natural next steps.
 
-- 如果被 SmartScreen 拦截：点「更多信息」→「仍要运行」。
-- 如果提示安装 OpenSSH Server 失败：通常是 Windows Update / BITS 被禁用或无法访问更新源（企业策略/离线环境）。请先让 IT 开启 Windows Update，或在「设置 → 应用 → 可选功能」里手动安装 `OpenSSH Server`。
-- 离线/绕过更新安装（推荐给企业/精简系统）：下载 `OpenSSH-Win64.zip`（PowerShell/Win32-OpenSSH），放到 `ssh-tool-win.exe` **同目录**并命名为 `OpenSSH-Win64.zip`，再点 Start 即可。
-  - 工具会解压到：`C:\ProgramData\ssh-tool\openssh\` 并执行 `install-sshd.ps1` 注册 `sshd` 服务
-  - 也可用环境变量指定 zip 路径：`SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`
+## Download and Install
 
-### Windows：离线安装 OpenSSH（详细）
+👉 **Download the latest release here:** [Releases / Latest](../../releases/latest)
 
-当目标机器 **Windows Update 被禁用/被 WSUS 策略拦截/离线** 时，`Add-WindowsCapability` 可能会失败。这时请按下面方式准备离线包：
+> Release downloads are in the **Assets** section of the release page. Do not use `Code -> Download ZIP`; that only contains source, not the packaged `.exe` / `.dmg` artifacts.
 
-最简单做法：直接下载 `ssh-tool-win-offline.zip`（Release 里提供，已包含 `OpenSSH-Win64.zip`）。
+### Windows Quick Start
 
-1. 在一台可上网的机器下载 `OpenSSH-Win64.zip`（项目：PowerShell/Win32-OpenSSH）
-2. 把该 zip 拷贝到目标 Windows 机器，并放到 `ssh-tool-win.exe` 同目录：
+1. Download one of these:
+   - Normal network environment: `ssh-tool-win.exe` or `ssh-tool-win-arm64.exe`
+   - **Offline / Windows Update blocked**: `ssh-tool-win-offline.zip` and run the matching EXE after extracting it
+2. Optionally place `support.pub` next to the EXE. This is recommended for passwordless support sessions.
+3. Double-click the EXE and approve UAC.
+   - If OpenSSH is not installed, the tool will try to install it first, which can take a few minutes.
+4. The local page opens automatically. Click `Start Session`.
+5. Send the displayed `ssh ...` command, and the password if one was generated, to the support engineer.
+6. When finished, click `Stop (restore configuration)`.
 
-```
+Common Windows notes:
+
+- If SmartScreen blocks the app, choose `More info` and then `Run anyway`.
+- If OpenSSH Server installation fails, it is often because Windows Update or BITS is disabled, or because the machine cannot reach Microsoft update sources. In that case, ask IT to enable Windows Update or install `OpenSSH Server` from `Settings -> Apps -> Optional features`.
+- For offline or policy-restricted environments, download `OpenSSH-Win64.zip` from PowerShell/Win32-OpenSSH, place it next to `ssh-tool-win.exe`, and name it `OpenSSH-Win64.zip`. The tool will unpack it to `C:\ProgramData\ssh-tool\openssh\` and register `sshd`.
+- You can also override the zip path with `SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`.
+
+### Windows: Offline OpenSSH Install
+
+When Windows Update is disabled, blocked by WSUS policy, or the machine is offline, `Add-WindowsCapability` may fail. Use the offline package flow instead:
+
+1. Download `ssh-tool-win-offline.zip` from Releases, or obtain `OpenSSH-Win64.zip` from a machine with internet access.
+2. Copy the zip to the target Windows machine and keep it alongside `ssh-tool-win.exe`:
+
+```text
 ssh-tool-win.exe
 OpenSSH-Win64.zip
-support.pub    (可选)
+support.pub    (optional)
 ```
 
-3. 双击运行 `ssh-tool-win.exe`，点 `Start`（工具会自动用 zip 安装并注册 `sshd` 服务）
+3. Run `ssh-tool-win.exe` and click `Start`.
 
-注意：一定要先“完整解压”离线包（不要在压缩包内直接双击 exe），并确保 `OpenSSH-Win64.zip` 与 exe 在同一目录。
+Important:
 
-安装目录说明：
+- Fully extract the offline bundle first; do not run the EXE directly from inside the zip.
+- Make sure `OpenSSH-Win64.zip` is in the same folder as the EXE.
 
-- OpenSSH 解压/安装缓存：`C:\ProgramData\ssh-tool\openssh\`
-- 会话状态文件：`C:\ProgramData\ssh-tool\active-session.json`
-- 运行时解包目录：`%LOCALAPPDATA%\ssh-tool-win\payload-*`（可用 `SSH_TOOL_PAYLOAD_DIR` 覆盖）
+Install / runtime locations:
 
-可选环境变量：
+- OpenSSH cache: `C:\ProgramData\ssh-tool\openssh\`
+- Session state: `C:\ProgramData\ssh-tool\active-session.json`
+- Runtime payload extraction: `%LOCALAPPDATA%\ssh-tool-win\payload-*` (`SSH_TOOL_PAYLOAD_DIR` can override this)
 
-- `SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`（指定离线 zip 位置）
-- `SSH_TOOL_OPENSSH_ZIP_URL=...`（自定义下载地址；不建议普通用户使用）
+Optional environment variables:
 
-### macOS 快速开始（推荐：DMG）
+- `SSH_TOOL_OPENSSH_ZIP=C:\path\OpenSSH-Win64.zip`
+- `SSH_TOOL_OPENSSH_ZIP_URL=...` for a custom download URL
 
-1. 下载并打开 `ssh-tool-mac.dmg`
-2. 把 `SSH Tool.app` 拖到 `Applications`
-3. 双击 `SSH Tool.app`：
-   - 若当前没有会话：启动 60 分钟的临时会话
-   - 若检测到已有会话：执行停止/恢复（兜底清理）
-4. 会自动打开会话页面，里面有要发给支持人员的 `ssh ...` 命令；页面里也有 `Stop Session` / `Recover` 按钮
+### macOS Quick Start
 
-常见提示（无法打开）：
+1. Download and open `ssh-tool-mac.dmg`.
+2. Drag `SSH Tool.app` into `Applications`.
+3. Double-click `SSH Tool.app`.
+   - If no session is active, it starts a 60-minute temporary session.
+   - If a session already exists, it performs stop/recover cleanup.
+4. The session page opens automatically and shows the `ssh ...` command for the support engineer.
+5. Use `Stop Session` or `Recover` from the page when you are done.
 
-- 右键 `SSH Tool.app` → Open
-- 或执行：`sudo xattr -dr com.apple.quarantine "/Applications/SSH Tool.app"`
+Common macOS notes:
 
-### macOS：离线/目录说明
+- If macOS warns that the app cannot be opened, right-click `SSH Tool.app` and choose `Open`.
+- If Gatekeeper quarantine needs to be cleared manually, run:
 
-- DMG/ZIP 安装包内已包含 `bore`，**不需要联网**。如果看到提示 “bore not found; downloading...”，说明你拿到的包缺文件或被误删；请重新从 Releases 下载，或手动安装：`brew install bore-cli`。
-- 默认状态目录：`/var/tmp/ssh-tool/`（可用 `SSH_TOOL_STATE_DIR` 覆盖）
-  - 状态文件：`/var/tmp/ssh-tool/active-session.json`（可用 `SSH_TOOL_STATE_PATH` 覆盖）
-- 公钥文件 `support.pub`：
-  - DMG：公钥随包内置（需要你们在发布前打包时写入）
-  - ZIP：用户可直接编辑解压目录下的 `support.pub`（留空则走临时账号+随机密码）
+```bash
+sudo xattr -dr com.apple.quarantine "/Applications/SSH Tool.app"
+```
 
-## 安全关闭（务必做）
+### macOS: Offline / Directory Notes
 
-远程支持结束后，请按下面顺序“彻底关闭并恢复配置”（仅断开 SSH 连接**不会**自动关闭隧道/服务）。
+- The DMG and ZIP bundles include `bore`, so they should not need internet access. If you see `bore not found; downloading...`, the bundle is incomplete or files were removed; re-download the release or install it manually with `brew install bore-cli`.
+- Default state directory: `/var/tmp/ssh-tool/` (`SSH_TOOL_STATE_DIR` can override this)
+  - State file: `/var/tmp/ssh-tool/active-session.json` (`SSH_TOOL_STATE_PATH` can override this)
+- `support.pub` behavior:
+  - DMG: support public key is intended to be baked into the shipped bundle during release packaging
+  - ZIP: users can edit `support.pub` directly in the extracted folder; leaving it empty falls back to temporary account + random password
 
-✅ 一、先关闭「远程连接窗口」（支持人员这边）
+## Safe Shutdown
 
-在你当前的 SSH 窗口输入：
+When remote support is finished, close it in this order. Disconnecting the SSH client alone does **not** stop the tunnel or restore the system.
+
+### 1. Close the SSH session from the support side
+
+In the SSH window, run:
 
 ```bash
 exit
 ```
 
-👉 这一步只是断开远程控制，不会关闭服务。
+That only disconnects the remote control session.
 
-✅ 二、去被支持的那台电脑关闭会话（最重要 ⭐）
+### 2. Stop the session on the customer machine
 
-### Windows（被支持端）
+#### Windows
 
-在 SSH Tool 页面点击：
+In the SSH Tool page, click:
 
-- `停止（恢复配置）`
+- `Stop (restore configuration)`
 
-点击后工具会自动：
+The tool will then:
 
-- 删除临时用户 `support_****`
-- 停止 `sshd`
-- 关闭 `bore` 隧道
-- 恢复 `sshd_config` / `authorized_keys` 等配置
+- Delete the temporary `support_****` user
+- Stop `sshd`
+- Close the `bore` tunnel
+- Restore `sshd_config` and `authorized_keys`
 
-日志出现类似：
+If the page is stuck or the button is unavailable:
 
-`Session stopped and configuration restored.`
+- Click `Recover (cleanup fallback)`
+- Or run `.\ssh-tool-win.exe recover` from an elevated PowerShell
 
-表示已彻底关闭。
-
-如果页面卡住 / 按钮点不了：
-
-- 先点：`Recover（兜底清理）`
-- 或在管理员 PowerShell 执行：`.\ssh-tool-win.exe recover`
-
-最极端情况（手动关闭，管理员 PowerShell）：
+Manual fallback from elevated PowerShell:
 
 ```powershell
 Stop-Service sshd -ErrorAction SilentlyContinue
 taskkill /f /im bore.exe
-# 把 support_**** 换成页面/日志里显示的临时用户名
+# Replace support_**** with the temporary username shown in the UI/logs
 net user support_**** /delete
 ```
 
-### macOS（被支持端）
+#### macOS
 
-优先使用会话页面里的按钮：
+Prefer the UI buttons:
 
-- `Stop Session`（立即停止并恢复）
-- `Recover`（兜底清理）
+- `Stop Session` to stop and restore immediately
+- `Recover` for fallback cleanup
 
-如果按钮不可用：
+If the buttons are not available:
 
-- 再打开一次 `SSH Tool.app`（检测到有会话会执行停止/恢复）
-- 或脚本版运行：`./remote-support.sh stop`（失败再 `./remote-support.sh recover`）
+- Open `SSH Tool.app` again; if a session exists, it will stop and restore
+- Or run the script version with:
 
-✅ 三、最终确认（推荐）
+```bash
+./remote-support.sh stop
+./remote-support.sh recover
+```
 
-支持人员再尝试连接一次刚才的命令（例如 `ssh ...`），如果返回 `Connection refused/closed` 等错误，说明远程支持已完全关闭。
+### 3. Verify the shutdown
 
-## 安全模型（简述）
+Have the support engineer try the same `ssh ...` command again. If it returns `Connection refused` or `closed`, the support session has been fully shut down.
 
-- 默认不开放局域网 SSH：Windows 默认把 `sshd` 绑定到 `127.0.0.1`，只通过 `bore.pub` 中继对外提供连接
-- 优先公钥认证：若提供 `support.pub`，将禁用密码登录；否则创建临时账号 + 随机密码
-- 会话到期自动回收：到期会自动执行 `recover`（恢复配置/清理临时用户/关闭隧道）
+## Security Model
 
-## 高级：脚本版（ZIP）使用说明
+- Windows does not expose SSH to the LAN by default: `sshd` is bound to `127.0.0.1` and only published through `bore.pub`.
+- Public-key auth is preferred: if `support.pub` is present, password login is disabled.
+- If no support key is present, the tool creates a temporary account with a random password.
+- Sessions expire automatically and run `recover` to restore configuration and clean up the temporary user / tunnel.
+
+## Advanced: Scripted ZIP Usage
 
 <details>
-<summary>展开</summary>
+<summary>Expand</summary>
 
-两种分发方式：
+### A) Windows ZIP
 
-### A) ZIP（脚本版）
-
-1. 下载并解压 `ssh-tool-win.zip`
-2. 可选：在 `support.pub` 放入你们支持团队的公钥（推荐，免密码）。如果留空，脚本会自动走“临时账号+随机密码”模式。
-3. 右键用 PowerShell 运行：
+1. Download and extract `ssh-tool-win.zip`.
+2. Optionally place your support team's public key in `support.pub`. If you leave it empty, the script switches to temporary account + random password mode.
+3. Run PowerShell as administrator and start the session:
 
 ```powershell
 .\remote-support.ps1 start -Minutes 60
 ```
 
-脚本会：
+The script will:
 
-- 若提供 `support.pub`：只允许公钥登录（禁用密码/交互式认证）
-- 若 `support.pub` 为空：创建临时账号 + 随机密码
-- 默认把 sshd 绑定到 `127.0.0.1`（不开放局域网 22）
-- 启动 `bore`，并把可用的 `ssh ...` 命令复制到剪贴板
-- 到期自动执行 `recover` 恢复配置
+- Allow only public-key login if `support.pub` is provided
+- Create a temporary account if `support.pub` is empty
+- Bind `sshd` to `127.0.0.1`
+- Start `bore` and copy the usable `ssh ...` command to the clipboard
+- Automatically run `recover` at the end of the timer
 
-立即停止：
+Stop immediately:
 
 ```powershell
 .\remote-support.ps1 stop
 ```
 
-如果提示找不到会话状态（比如脚本运行中途被强制关闭导致），可用恢复命令做兜底清理：
+If the session state cannot be found, use fallback cleanup:
 
 ```powershell
 .\remote-support.ps1 recover
 ```
 
-### B) 单文件 EXE
+### B) Windows EXE
 
-1. 下载 `ssh-tool-win.exe`（或 `ssh-tool-win-arm64.exe`）
-2. 可选：把 `support.pub` 放在 exe 同目录（推荐，免密码）。如果留空，会自动走“临时账号+随机密码”模式。
-3. 双击运行（会请求管理员权限），会自动打开本地页面，在页面里点“开始会话”（注意：运行期间请不要关闭弹出的黑色窗口）；也可以在 PowerShell 直接运行：
+1. Download `ssh-tool-win.exe` or `ssh-tool-win-arm64.exe`.
+2. Optionally place `support.pub` next to the EXE. If it is missing, the tool falls back to temporary account + random password mode.
+3. Double-click the EXE. It requests administrator privileges and opens the local UI. You can also run it from PowerShell:
 
 ```powershell
 .\ssh-tool-win.exe start --minutes 60
 ```
 
-立即停止 / 恢复：
+Stop or recover:
 
 ```powershell
 .\ssh-tool-win.exe stop
 .\ssh-tool-win.exe recover
 ```
 
-说明：exe 会把内置的 `remote-support.ps1`/`bore.exe` 解包到 `%LOCALAPPDATA%\\ssh-tool-win\\payload-*` 后执行；如需自定义解包目录，可设置环境变量 `SSH_TOOL_PAYLOAD_DIR`。
+The EXE extracts its bundled `remote-support.ps1` and `bore.exe` to `%LOCALAPPDATA%\ssh-tool-win\payload-*`. Override the extraction directory with `SSH_TOOL_PAYLOAD_DIR` if needed.
 
-## 顾客侧使用（macOS）
+### C) macOS ZIP
 
-两种分发方式：
-
-### A) DMG（推荐）
-
-1. 下载并打开 `ssh-tool-mac.dmg`
-2. 把 `SSH Tool.app` 拖到 `Applications`
-3. 双击 `SSH Tool.app`：
-
-- 若当前没有会话：启动 60 分钟的临时会话
-- 若检测到已有会话：执行停止/恢复（脚本内部会自动兜底）
-
-启动后会自动打开一个本地页面，里面有需要发给支持人员的 `ssh ...` 命令。
-页面里也有 `Stop Session` / `Recover` 按钮，可用于立即关闭并恢复配置（需要已安装并运行过 `SSH Tool.app` 以注册 `ssh-tool://` 协议）。
-
-说明：首次启动会弹出 `sudo` 提示（启用 Remote Login/修改 sshd_config/恢复配置需要 root）。
-
-### B) ZIP（脚本版）
-
-1. 下载并解压 `ssh-tool-mac.zip`
-2. 可选：在 `support.pub` 放入你们支持团队的公钥（推荐，免密码）。如果留空，脚本会自动走“临时账号+随机密码”模式。
-3. 运行：
+1. Download and extract `ssh-tool-mac.zip`.
+2. Optionally place your support team's public key in `support.pub`. Leaving it empty enables temporary account + random password mode.
+3. Run:
 
 ```bash
 chmod +x ./remote-support.sh
 ./remote-support.sh start
 ```
 
-注意：
+Notes:
 
-- 脚本会自动请求 `sudo`（启用 Remote Login/修改 sshd_config/恢复配置需要 root）
-- 默认随包附带 `bore`（Apple Silicon/Intel）；如果缺失，脚本会尝试自动下载 `bore`（可通过 `SSH_TOOL_BORE_VERSION` 固定版本）；也可以手动安装：`brew install bore-cli`
+- The script prompts for `sudo`, because enabling Remote Login and restoring configuration require root.
+- The bundle includes `bore` for Apple Silicon and Intel. If it is missing, the script will try to download it automatically. You can pin the version with `SSH_TOOL_BORE_VERSION`, or install it manually with `brew install bore-cli`.
 
-立即停止：
+Stop immediately:
 
 ```bash
 ./remote-support.sh stop
 ```
 
-如果提示找不到会话状态（比如脚本运行中途被强制关闭导致），可用恢复命令做兜底清理：
+If session state is missing, run fallback cleanup:
 
 ```bash
 ./remote-support.sh recover
 ```
 
-### 打包（开发者）
+### D) macOS DMG
+
+1. Download and open `ssh-tool-mac.dmg`.
+2. Drag `SSH Tool.app` to `Applications`.
+3. Double-click `SSH Tool.app`.
+   - If no session exists, it starts a 60-minute temporary session.
+   - If a session exists, it stops and restores.
+
+The app opens a local page with the `ssh ...` command for the support engineer and the `Stop Session` / `Recover` buttons. The first launch will prompt for `sudo`, since Remote Login and cleanup require root.
+
+</details>
+
+## Developer Packaging
+
+Run:
 
 ```bash
 ./scripts/build-release-zips.sh
 ```
 
-输出：
+This produces:
 
-- `dist/ssh-tool-win.zip`（仅脚本 + `bore.exe` + `support.pub`）
-- `dist/ssh-tool-win.exe`（单文件 EXE，内置脚本 + `bore.exe` + `support.pub`；也支持把 `support.pub` 放在 exe 同目录覆盖）
-- `dist/ssh-tool-mac.zip`（脚本 + `bore` + `support.pub`）
-- `dist/ssh-tool-mac.dmg`（同上，macOS 常用分发格式）
-</details>
+- `dist/ssh-tool-win.zip` - Windows script bundle with `bore.exe` and `support.pub`
+- `dist/ssh-tool-win.exe` - Windows single-file EXE with bundled script + `bore.exe` + `support.pub`
+- `dist/ssh-tool-mac.zip` - macOS script bundle with `bore` and `support.pub`
+- `dist/ssh-tool-mac.dmg` - macOS distribution format for end users
 
-## 仓库内容（开发者）
+Windows MSI packaging is available separately:
 
-- `packages/ssh-tool-win/remote-support.ps1`：Windows（OpenSSH Server + `bore.exe`）
-- `packages/ssh-tool-mac/remote-support.sh`：macOS（Remote Login/sshd + `bore`）
+```bash
+./scripts/build-msi-win.sh
+```
+
+That script auto-detects WiX v4 or `wixl`/msitools and emits `dist/ssh-tool-win.msi`.
+
+## Repository Structure
+
+- `packages/ssh-tool-win/` - Windows app, UI, scripts, `bore.exe`, and support key example
+- `packages/ssh-tool-mac/` - macOS app, UI, scripts, and bundled `bore` binaries
+- `scripts/` - release, EXE, DMG, MSI, and packaging helpers
+- `build/` - MSI templates for Windows installer generation
+- `keys/` - support-team public keys that are baked into release bundles
+
+## Release Keys
+
+If you are packaging customer builds, place one or more OpenSSH public keys in `keys/support.pub`. Keep the matching private key(s) on the support side only.
+
+Then build the customer bundles:
+
+```bash
+./scripts/build-release-zips.sh
+```
